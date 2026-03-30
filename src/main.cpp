@@ -1,4 +1,3 @@
-
 #include <windows.h>
 #include <wrl.h>
 #include <shellapi.h>
@@ -31,6 +30,7 @@ using namespace DirectX;
 static const UINT FrameCount = 2;
 static const UINT Width = 1280;
 static const UINT Height = 720;
+static const UINT ObjectCount = 1;
 
 inline void ThrowIfFailed(HRESULT hr)
 {
@@ -46,7 +46,13 @@ struct Vertex
 
 struct alignas(256) ObjectConstants
 {
+    XMFLOAT4X4 world;
     XMFLOAT4X4 worldViewProj;
+    XMFLOAT3 lightPosition;
+    float lightIntensity;
+    XMFLOAT3 cameraPosition;
+    float padding;
+    XMFLOAT4 baseColor;
 };
 
 struct Mesh
@@ -171,7 +177,7 @@ private:
     D3D12_VIEWPORT m_viewport{};
     D3D12_RECT m_scissorRect{};
 
-    ObjectRenderData m_objects[10];
+    ObjectRenderData m_objects[ObjectCount];
     float m_heights[10] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }; ///////////////////////////
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -285,14 +291,14 @@ private:
         m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
         D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-        srvHeapDesc.NumDescriptors = 3;
+        srvHeapDesc.NumDescriptors = ObjectCount;
         srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
         m_srvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
         D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-        cbvHeapDesc.NumDescriptors = 3;
+        cbvHeapDesc.NumDescriptors = ObjectCount;
         cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
         cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
         ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
@@ -326,37 +332,16 @@ private:
 
     void LoadAssets()
     {
-        D3D12_DESCRIPTOR_RANGE descriptorRange = {};
-        descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        descriptorRange.NumDescriptors = 1;
-        descriptorRange.BaseShaderRegister = 0;
-        descriptorRange.OffsetInDescriptorsFromTableStart = 0;
-
-        D3D12_ROOT_PARAMETER rootParameters[2] = {};
+        D3D12_ROOT_PARAMETER rootParameters[1] = {};
         rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         rootParameters[0].Descriptor.ShaderRegister = 0;
-        rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-        rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-        rootParameters[1].DescriptorTable.pDescriptorRanges = &descriptorRange;
-        rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-        D3D12_STATIC_SAMPLER_DESC sampler = {};
-        sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-        sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        sampler.ShaderRegister = 0;
-        sampler.RegisterSpace = 0;
-        sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-        sampler.MaxLOD = D3D12_FLOAT32_MAX;
+        rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         rootSignatureDesc.NumParameters = _countof(rootParameters);
         rootSignatureDesc.pParameters = rootParameters;
-        rootSignatureDesc.NumStaticSamplers = 1;
-        rootSignatureDesc.pStaticSamplers = &sampler;
+        rootSignatureDesc.NumStaticSamplers = 0;
+        rootSignatureDesc.pStaticSamplers = nullptr;
         rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
         ComPtr<ID3DBlob> signature, error;
@@ -384,7 +369,7 @@ private:
         psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
         psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
         psoDesc.RasterizerState.DepthClipEnable = TRUE;
         psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
@@ -396,7 +381,7 @@ private:
         ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
-        const UINT totalCbSize = cbSize * 10;
+        const UINT totalCbSize = cbSize * ObjectCount;
 
         D3D12_HEAP_PROPERTIES cbHeapProps = {};
         cbHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -418,25 +403,8 @@ private:
 
         ThrowIfFailed(m_constantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_cbvDataBegin)));
 
-        for (UINT i = 0; i < 3; ++i)
-        {
-            D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-            cbvDesc.BufferLocation = m_constantBuffer->GetGPUVirtualAddress() + static_cast<UINT64>(i) * cbSize;
-            cbvDesc.SizeInBytes = cbSize;
-            D3D12_CPU_DESCRIPTOR_HANDLE handle = m_cbvHeap->GetCPUDescriptorHandleForHeapStart();
-            handle.ptr += static_cast<SIZE_T>(i) * m_srvDescriptorSize;
-            m_device->CreateConstantBufferView(&cbvDesc, handle);
-        }
-
-        for (int i = 0; i < 10; i++) {
-            m_objects[i].mesh = CreateQuadMesh();
-            CreateMeshBuffers(m_objects[i]);
-            LoadDDSTexture(L"assets/crate.dds", 0, m_objects[i]);
-        }
-
-
-        for (int i = 0; i < 10; ++i)
-            m_speeds[i] = speedDist(gen);
+        m_objects[0].mesh = CreateCubeMesh();
+        CreateMeshBuffers(m_objects[0]);
 
         ExecuteAndWaitForUploads();
     }
@@ -708,32 +676,32 @@ private:
 
     void Update(float deltaTime)
     {
+        (void)deltaTime;
 
-        for (int i = 0; i < 10; i++) {
-            m_heights[i] += deltaTime * m_speeds[i];
-            if (m_heights[i] > 2.0f) { m_heights[i] = 0; }
-        }
+        XMMATRIX world = XMMatrixScaling(8.0f, 4.0f, 8.0f);
 
+        const XMFLOAT3 cameraPosF(0.0f, 0.0f, -1.5f);
         XMMATRIX view = XMMatrixLookAtLH(
-            XMVectorSet(0.0f, 2.5f, -8.5f, 1.0f),
-            XMVectorZero(),
+            XMVectorSet(cameraPosF.x, cameraPosF.y, cameraPosF.z, 1.0f),
+            XMVectorSet(0.0f, 0.0f, 2.0f, 1.0f),
             XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 
-        XMMATRIX proj = XMMatrixPerspectiveFovLH(XMConvertToRadians(45.0f), static_cast<float>(Width) / static_cast<float>(Height), 0.1f, 100.0f);
+        XMMATRIX proj = XMMatrixPerspectiveFovLH(
+            XMConvertToRadians(60.0f),
+            static_cast<float>(Width) / static_cast<float>(Height),
+            0.1f,
+            100.0f);
 
-        XMMATRIX worlds[10];
-        for (int i = 0; i < 10; ++i)
-        {
-            worlds[i] = XMMatrixTranslation(((1.0f*i)/10-0.5f) * m_heights[i], m_heights[i], 0.0f);
-        }
+        ObjectConstants cb{};
+        XMStoreFloat4x4(&cb.world, XMMatrixTranspose(world));
+        XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
+        cb.lightPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        cb.lightIntensity = 16.0f;
+        cb.cameraPosition = cameraPosF;
+        cb.padding = 0.0f;
+        cb.baseColor = XMFLOAT4(0.55f, 0.60f, 0.70f, 1.0f);
 
-        const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
-        for (UINT i = 0; i < 10; ++i)
-        {
-            ObjectConstants cb{};
-            XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(worlds[i] * view * proj));
-            memcpy(m_cbvDataBegin + cbSize * i, &cb, sizeof(cb));
-        }
+        memcpy(m_cbvDataBegin, &cb, sizeof(cb));
     }
 
     void Render()
@@ -752,26 +720,19 @@ private:
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
         rtvHandle.ptr += static_cast<SIZE_T>(m_frameIndex) * m_rtvDescriptorSize;
 
-        const float clearColor[] = { 0.08f, 0.09f, 0.13f, 1.0f };
+        const float clearColor[] = { 0.02f, 0.02f, 0.03f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
-        ID3D12DescriptorHeap* heaps[] = { m_srvHeap.Get() };
-        m_commandList->SetDescriptorHeaps(1, heaps);
         m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
         m_commandList->RSSetViewports(1, &m_viewport);
         m_commandList->RSSetScissorRects(1, &m_scissorRect);
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
-        for (UINT i = 0; i < 10; ++i)
-        {
-            m_commandList->IASetVertexBuffers(0, 1, &m_objects[i].vbv);
-            m_commandList->IASetIndexBuffer(&m_objects[i].ibv);
-            m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + static_cast<UINT64>(i) * cbSize);
-            m_commandList->SetGraphicsRootDescriptorTable(1, m_objects[i].srvGpu);
-            m_commandList->DrawIndexedInstanced(m_objects[i].indexCount, 1, 0, 0, 0);
-        }
+        m_commandList->IASetVertexBuffers(0, 1, &m_objects[0].vbv);
+        m_commandList->IASetIndexBuffer(&m_objects[0].ibv);
+        m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
+        m_commandList->DrawIndexedInstanced(m_objects[0].indexCount, 1, 0, 0, 0);
 
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;

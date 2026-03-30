@@ -1,11 +1,13 @@
-
 cbuffer ObjectCB : register(b0)
 {
+    float4x4 world;
     float4x4 worldViewProj;
+    float3 lightPosition;
+    float lightIntensity;
+    float3 cameraPosition;
+    float padding0;
+    float4 baseColor;
 };
-
-Texture2D albedoTexture : register(t0);
-SamplerState linearWrapSampler : register(s0);
 
 struct VSInput
 {
@@ -16,18 +18,38 @@ struct VSInput
 struct PSInput
 {
     float4 position : SV_POSITION;
-    float2 texcoord : TEXCOORD0;
+    float3 worldPos : TEXCOORD0;
 };
 
 PSInput VSMain(VSInput input)
 {
     PSInput output;
+    float4 worldPos = mul(float4(input.position, 1.0f), world);
     output.position = mul(float4(input.position, 1.0f), worldViewProj);
-    output.texcoord = input.texcoord;
+    output.worldPos = worldPos.xyz;
     return output;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    return albedoTexture.Sample(linearWrapSampler, input.texcoord);
+    float3 dpdx = ddx(input.worldPos);
+    float3 dpdy = ddy(input.worldPos);
+    float3 normal = normalize(cross(dpdy, dpdx));
+
+    float3 viewDir = normalize(cameraPosition - input.worldPos);
+    if (dot(normal, viewDir) < 0.0f)
+    {
+        normal = -normal;
+    }
+
+    float3 toLight = lightPosition - input.worldPos;
+    float dist = max(length(toLight), 0.0001f);
+    float3 lightDir = toLight / dist;
+
+    float ndotl = saturate(dot(normal, lightDir));
+    float attenuation = 1.0f / (1.0f + dist * dist * 0.25f);
+    float lighting = 0.08f + ndotl * lightIntensity * attenuation;
+    float glow = 0.3f * exp(-dist * 1.2f);
+
+    return float4(baseColor.rgb * lighting + glow.xxx, 1.0f);
 }
