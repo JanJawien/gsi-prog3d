@@ -20,6 +20,8 @@ std::mt19937 gen(rd());
 std::uniform_real_distribution<float> speedDist(1.5f, 5.0f);
 
 float m_speeds[10]; // initialize once
+bool isLightOn = true;
+float lightIntensity = 16.0f;
 
 // Then in your update:
 
@@ -182,10 +184,26 @@ private:
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
-        if (message == WM_NCCREATE)
+        switch (message)
         {
+        case WM_KEYDOWN:
+            switch (wParam) {
+            case VK_SPACE:
+                isLightOn = !isLightOn;
+                break;
+            case VK_UP:
+                lightIntensity *= 2.0f;
+                break;
+            case VK_DOWN:
+                lightIntensity /= 2.0f;
+                break;
+            }
+            break;
+
+        case WM_NCCREATE:
             CREATESTRUCT* createStruct = reinterpret_cast<CREATESTRUCT*>(lParam);
             SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(createStruct->lpCreateParams));
+            break;
         }
 
         auto* app = reinterpret_cast<Dx12App*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
@@ -696,7 +714,7 @@ private:
         XMStoreFloat4x4(&cb.world, XMMatrixTranspose(world));
         XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
         cb.lightPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
-        cb.lightIntensity = 16.0f;
+        cb.lightIntensity = isLightOn? lightIntensity : 0.0f;
         cb.cameraPosition = cameraPosF;
         cb.padding = 0.0f;
         cb.baseColor = XMFLOAT4(0.55f, 0.60f, 0.70f, 1.0f);
