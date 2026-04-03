@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <cstdint>
 #include <fstream>
+#include <sstream>
+#include <algorithm>
 
 #include <random>
 
@@ -32,13 +34,14 @@ using namespace DirectX;
 static const UINT FrameCount = 2;
 static const UINT Width = 1280;
 static const UINT Height = 720;
-static const UINT ObjectCount = 1;
+static const UINT ObjectCount = 2;
 
 inline void ThrowIfFailed(HRESULT hr)
 {
     if (FAILED(hr))
         throw std::runtime_error("HRESULT failed.");
 }
+
 
 struct Vertex
 {
@@ -109,6 +112,53 @@ struct DDS_HEADER
     uint32_t reserved2;
 };
 
+Mesh LoadOBJ(const std::string& filename) {
+    Mesh mesh;
+    std::ifstream file(filename);
+    if (!file.is_open()) throw std::runtime_error("Nie znaleziono pliku modelu!");
+
+    std::vector<XMFLOAT3> temp_positions;
+    std::vector<XMFLOAT2> temp_uvs;
+
+    std::string line;
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string prefix;
+        ss >> prefix;
+
+        if (prefix == "v") {
+            XMFLOAT3 pos;
+            ss >> pos.x >> pos.y >> pos.z;
+            temp_positions.push_back(pos);
+        }
+        else if (prefix == "vt") {
+            XMFLOAT2 uv;
+            ss >> uv.x >> uv.y;
+            uv.y = 1.0f - uv.y;
+            temp_uvs.push_back(uv);
+        }
+        else if (prefix == "f") {
+            for (int i = 0; i < 3; i++) {
+                std::string vertexData;
+                ss >> vertexData;
+
+                int vIdx, tIdx;
+                replace(vertexData.begin(), vertexData.end(), '/', ' ');
+                std::stringstream vss(vertexData);
+                vss >> vIdx >> tIdx;
+
+                Vertex v;
+                v.position = temp_positions[vIdx - 1];
+                v.uv = temp_uvs[tIdx - 1];
+
+                mesh.vertices.push_back(v);
+                mesh.indices.push_back((uint16_t)mesh.indices.size());
+            }
+        }
+    }
+    return mesh;
+}
+
 class Dx12App
 {
 public:
@@ -170,6 +220,11 @@ private:
     UINT m_frameIndex = 0;
     UINT m_rtvDescriptorSize = 0;
     UINT m_srvDescriptorSize = 0;
+
+    DirectX::XMFLOAT3 m_cameraPos = { 0.0f, -2.5f, -5.0f }; // Startowa pozycja
+    float m_moveSpeed = 10.0f;
+    float m_cameraYaw = 0.0f;     
+    float m_rotationSpeed = 2.0f;
 
     ComPtr<ID3D12RootSignature> m_rootSignature;
     ComPtr<ID3D12PipelineState> m_pipelineState;
@@ -350,16 +405,32 @@ private:
 
     void LoadAssets()
     {
-        D3D12_ROOT_PARAMETER rootParameters[1] = {};
+        D3D12_DESCRIPTOR_RANGE range = {};
+        range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        range.NumDescriptors = 1;
+        range.BaseShaderRegister = 0;
+        range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+        D3D12_ROOT_PARAMETER rootParameters[2] = {};
         rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
         rootParameters[0].Descriptor.ShaderRegister = 0;
         rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+        rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
+        rootParameters[1].DescriptorTable.pDescriptorRanges = &range;
+        rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+        D3D12_STATIC_SAMPLER_DESC sampler = {};
+        sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+        sampler.AddressU = sampler.AddressV = sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+        sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
         D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
         rootSignatureDesc.NumParameters = _countof(rootParameters);
         rootSignatureDesc.pParameters = rootParameters;
-        rootSignatureDesc.NumStaticSamplers = 0;
-        rootSignatureDesc.pStaticSamplers = nullptr;
+        rootSignatureDesc.NumStaticSamplers = 1;
+        rootSignatureDesc.pStaticSamplers = &sampler;
         rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
         ComPtr<ID3DBlob> signature, error;
@@ -423,6 +494,11 @@ private:
 
         m_objects[0].mesh = CreateCubeMesh();
         CreateMeshBuffers(m_objects[0]);
+        LoadDDSTexture(L"Assets/energy.dds", 0, m_objects[0]);
+
+        m_objects[1].mesh = LoadOBJ("Assets/table.obj");
+        CreateMeshBuffers(m_objects[1]);
+        LoadDDSTexture(L"Assets/crate.dds", 1, m_objects[1]);
 
         ExecuteAndWaitForUploads();
     }
@@ -694,32 +770,56 @@ private:
 
     void Update(float deltaTime)
     {
-        (void)deltaTime;
+        if (GetAsyncKeyState('Q') & 0x8000) m_cameraYaw -= m_rotationSpeed * deltaTime;
+        if (GetAsyncKeyState('E') & 0x8000) m_cameraYaw += m_rotationSpeed * deltaTime;
 
-        XMMATRIX world = XMMatrixScaling(8.0f, 4.0f, 8.0f);
+        float sinYaw = sinf(m_cameraYaw);
+        float cosYaw = cosf(m_cameraYaw);
 
-        const XMFLOAT3 cameraPosF(0.0f, 0.0f, -1.5f);
-        XMMATRIX view = XMMatrixLookAtLH(
-            XMVectorSet(cameraPosF.x, cameraPosF.y, cameraPosF.z, 1.0f),
-            XMVectorSet(0.0f, 0.0f, 2.0f, 1.0f),
-            XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+        XMVECTOR forward = XMVectorSet(sinYaw, 0.0f, cosYaw, 0.0f);
+        XMVECTOR right = XMVectorSet(cosYaw, 0.0f, -sinYaw, 0.0f);
+        XMVECTOR pos = XMLoadFloat3(&m_cameraPos);
+
+        if (GetAsyncKeyState('W') & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(forward, m_moveSpeed * deltaTime));
+        if (GetAsyncKeyState('S') & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(forward, m_moveSpeed * deltaTime));
+        if (GetAsyncKeyState('D') & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(right, m_moveSpeed * deltaTime));
+        if (GetAsyncKeyState('A') & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(right, m_moveSpeed * deltaTime));
+
+        XMStoreFloat3(&m_cameraPos, pos);
+
+        XMVECTOR camTarget = XMVectorAdd(pos, forward);
+        XMVECTOR camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+        XMMATRIX view = XMMatrixLookAtLH(pos, camTarget, camUp);
 
         XMMATRIX proj = XMMatrixPerspectiveFovLH(
             XMConvertToRadians(60.0f),
             static_cast<float>(Width) / static_cast<float>(Height),
             0.1f,
-            100.0f);
+            200.0f);
 
-        ObjectConstants cb{};
-        XMStoreFloat4x4(&cb.world, XMMatrixTranspose(world));
-        XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
-        cb.lightPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
-        cb.lightIntensity = isLightOn? lightIntensity : 0.0f;
-        cb.cameraPosition = cameraPosF;
-        cb.padding = 0.0f;
-        cb.baseColor = XMFLOAT4(0.55f, 0.60f, 0.70f, 1.0f);
+        const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u; 
 
-        memcpy(m_cbvDataBegin, &cb, sizeof(cb));
+        ObjectConstants roomCb{};
+        XMMATRIX roomWorld = XMMatrixScaling(16.0f, 5.0f, 16.0f);
+        XMStoreFloat4x4(&roomCb.world, XMMatrixTranspose(roomWorld));
+        XMStoreFloat4x4(&roomCb.worldViewProj, XMMatrixTranspose(roomWorld * view * proj));
+        roomCb.lightPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        roomCb.lightIntensity = isLightOn ? lightIntensity : 0.0f;
+        roomCb.cameraPosition = m_cameraPos;
+        roomCb.baseColor = XMFLOAT4(0.55f, 0.60f, 0.70f, 1.0f);
+
+        memcpy(m_cbvDataBegin, &roomCb, sizeof(roomCb));
+
+        ObjectConstants tableCb{};
+        XMMATRIX tableWorld = XMMatrixScaling(4.0f, 4.0f, 4.0f) * XMMatrixTranslation(3.0f, -5.0f, 13.0f);
+        XMStoreFloat4x4(&tableCb.world, XMMatrixTranspose(tableWorld));
+        XMStoreFloat4x4(&tableCb.worldViewProj, XMMatrixTranspose(tableWorld * view * proj));
+        tableCb.lightPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        tableCb.lightIntensity = isLightOn ? lightIntensity : 0.0f;
+        tableCb.cameraPosition = m_cameraPos;
+        tableCb.baseColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f); 
+
+        memcpy(m_cbvDataBegin + cbSize, &tableCb, sizeof(tableCb));
     }
 
     void Render()
@@ -747,10 +847,21 @@ private:
         m_commandList->RSSetScissorRects(1, &m_scissorRect);
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        m_commandList->IASetVertexBuffers(0, 1, &m_objects[0].vbv);
-        m_commandList->IASetIndexBuffer(&m_objects[0].ibv);
-        m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
-        m_commandList->DrawIndexedInstanced(m_objects[0].indexCount, 1, 0, 0, 0);
+        const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
+        ID3D12DescriptorHeap* heaps[] = { m_srvHeap.Get() };
+        m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
+
+
+        for (UINT i = 0; i < ObjectCount; i++)
+        {
+            m_commandList->IASetVertexBuffers(0, 1, &m_objects[i].vbv);
+            m_commandList->IASetIndexBuffer(&m_objects[i].ibv);
+            m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize));
+
+            m_commandList->SetGraphicsRootDescriptorTable(1, m_objects[i].srvGpu);
+
+            m_commandList->DrawIndexedInstanced(m_objects[i].indexCount, 1, 0, 0, 0);
+        }
 
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
