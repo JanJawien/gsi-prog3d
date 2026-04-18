@@ -78,7 +78,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 2; 
+    static const UINT ObjectCount = 3; 
 
     // Object data array
     ObjectRenderData m_objects[ObjectCount];
@@ -94,6 +94,8 @@ private:
     ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
     ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
+    ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
+    ComPtr<ID3D12Resource> m_depthBuffer;
     ComPtr<ID3D12Fence> m_fence;
     UINT64 m_fenceValues[FrameCount] = {};
     HANDLE m_fenceEvent = nullptr;
@@ -102,14 +104,15 @@ private:
     UINT m_srvDescriptorSize = 0;
 
     // Camera params (TEMP)
-    DirectX::XMFLOAT3 m_cameraPos = { 0.0f, 0.0f, 0.0f }; // Startowa pozycja
-    float m_moveSpeed = 10.0f;
-    float m_cameraYaw = 0.0f;     
+    DirectX::XMFLOAT3 m_cameraPos = { 0.0f, 1.8f, 0.0f }; // Startowa pozycja
+    float m_moveSpeed = 2.0f;
+    float m_cameraYaw = 3.14f/2;     
     float m_rotationSpeed = 2.0f;
 
     // Light params (TEMP)
+    DirectX::XMFLOAT3 lightPosition = { -4.0f, 3.0f, 4.0f }; 
     bool isLightOn = true;
-    float lightIntensity = 16.0f;
+    float lightIntensity = 64.0f;
 
     // GPU data
     ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -239,6 +242,12 @@ private:
         ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
         m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
+        D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+        dsvHeapDesc.NumDescriptors = 1;
+        dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
+
         D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
         srvHeapDesc.NumDescriptors = ObjectCount;
         srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -262,6 +271,44 @@ private:
 
             ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[i])));
         }
+
+        D3D12_RESOURCE_DESC depthDesc = {};
+        depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        depthDesc.Width = Width;
+        depthDesc.Height = Height;
+        depthDesc.DepthOrArraySize = 1;
+        depthDesc.MipLevels = 1;
+        depthDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        depthDesc.SampleDesc.Count = 1;
+        depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+        D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
+        depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
+        depthOptimizedClearValue.DepthStencil.Stencil = 0;
+
+        D3D12_HEAP_PROPERTIES heapProps = {};
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &depthDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &depthOptimizedClearValue,
+            IID_PPV_ARGS(&m_depthBuffer)
+        ));
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+        dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+
+        m_device->CreateDepthStencilView(
+            m_depthBuffer.Get(),
+            &dsvDesc,
+            m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
+        );
 
         m_viewport = { 0.0f, 0.0f, static_cast<float>(Width), static_cast<float>(Height), 0.0f, 1.0f };
         m_scissorRect = { 0, 0, static_cast<LONG>(Width), static_cast<LONG>(Height) };
@@ -309,6 +356,8 @@ private:
         rootSignatureDesc.pStaticSamplers = &sampler;
         rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
+
+
         ComPtr<ID3DBlob> signature, error;
         ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
         ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature)));
@@ -334,7 +383,7 @@ private:
         psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
+        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
         psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
         psoDesc.RasterizerState.DepthClipEnable = TRUE;
         psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
@@ -342,8 +391,13 @@ private:
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
         psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+        psoDesc.DepthStencilState.DepthEnable = TRUE;
+        psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+        psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
         psoDesc.SampleDesc.Count = 1;
         ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+
 
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
         const UINT totalCbSize = cbSize * ObjectCount;
@@ -379,9 +433,13 @@ private:
         CreateMeshBuffers(m_objects[0]);
         LoadDDSTexture(L"Assets/energy.dds", 0, m_objects[0]);
 
-        m_objects[1].mesh = ModelLoader::LoadOBJ("Assets/table.obj");
+        m_objects[1].mesh = ModelLoader::LoadOBJ("Assets/scene-base.obj");
         CreateMeshBuffers(m_objects[1]);
-        LoadDDSTexture(L"Assets/crate.dds", 1, m_objects[1]);
+        LoadDDSTexture(L"Assets/energy.dds", 1, m_objects[1]);
+
+        m_objects[2].mesh = ModelLoader::LoadOBJ("Assets/table.obj");
+        CreateMeshBuffers(m_objects[2]);
+        LoadDDSTexture(L"Assets/crate.dds", 2, m_objects[2]);
     }
     
     void CreateMeshBuffers(ObjectRenderData& obj)
@@ -566,6 +624,7 @@ private:
 
     void Update(float deltaTime)
     {
+        // Move camera
         if (GetAsyncKeyState('Q') & 0x8000) m_cameraYaw -= m_rotationSpeed * deltaTime;
         if (GetAsyncKeyState('E') & 0x8000) m_cameraYaw += m_rotationSpeed * deltaTime;
 
@@ -574,12 +633,15 @@ private:
 
         XMVECTOR forward = XMVectorSet(sinYaw, 0.0f, cosYaw, 0.0f);
         XMVECTOR right = XMVectorSet(cosYaw, 0.0f, -sinYaw, 0.0f);
+        XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
         XMVECTOR pos = XMLoadFloat3(&m_cameraPos);
 
         if (GetAsyncKeyState('W') & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(forward, m_moveSpeed * deltaTime));
         if (GetAsyncKeyState('S') & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(forward, m_moveSpeed * deltaTime));
         if (GetAsyncKeyState('D') & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(right, m_moveSpeed * deltaTime));
-        if (GetAsyncKeyState('A') & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(right, m_moveSpeed * deltaTime));
+        if (GetAsyncKeyState('A') & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(right, m_moveSpeed * deltaTime));       
+        if (GetAsyncKeyState(VK_LSHIFT) & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(up, m_moveSpeed * deltaTime));       
+        if (GetAsyncKeyState(VK_LCONTROL) & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(up, m_moveSpeed * deltaTime));
 
         XMStoreFloat3(&m_cameraPos, pos);
 
@@ -595,27 +657,10 @@ private:
 
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u; 
 
-        ObjectConstants roomCb{};
-        XMMATRIX roomWorld = XMMatrixScaling(16.0f, 5.0f, 16.0f);
-        XMStoreFloat4x4(&roomCb.world, XMMatrixTranspose(roomWorld));
-        XMStoreFloat4x4(&roomCb.worldViewProj, XMMatrixTranspose(roomWorld * view * proj));
-        roomCb.lightPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
-        roomCb.lightIntensity = isLightOn ? lightIntensity : 0.0f;
-        roomCb.cameraPosition = m_cameraPos;
-        roomCb.baseColor = XMFLOAT4(0.55f, 0.60f, 0.70f, 1.0f);
-
-        memcpy(m_cbvDataBegin, &roomCb, sizeof(roomCb));
-
-        ObjectConstants tableCb{};
-        XMMATRIX tableWorld = XMMatrixScaling(4.0f, 4.0f, 4.0f) * XMMatrixTranslation(3.0f, -5.0f, 13.0f);
-        XMStoreFloat4x4(&tableCb.world, XMMatrixTranspose(tableWorld));
-        XMStoreFloat4x4(&tableCb.worldViewProj, XMMatrixTranspose(tableWorld * view * proj));
-        tableCb.lightPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
-        tableCb.lightIntensity = isLightOn ? lightIntensity : 0.0f;
-        tableCb.cameraPosition = m_cameraPos;
-        tableCb.baseColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f); 
-
-        memcpy(m_cbvDataBegin + cbSize, &tableCb, sizeof(tableCb));
+        // Render objects
+        UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.55f, 0.60f, 0.70f, 1.0f), cbSize);
+        UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), cbSize);
+        UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), cbSize);
     }
 
     void Render()
@@ -632,11 +677,13 @@ private:
         m_commandList->ResourceBarrier(1, &barrier);
 
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
         rtvHandle.ptr += static_cast<SIZE_T>(m_frameIndex) * m_rtvDescriptorSize;
 
         const float clearColor[] = { 0.02f, 0.02f, 0.03f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+        m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+        m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
         m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
         m_commandList->RSSetViewports(1, &m_viewport);
@@ -699,6 +746,27 @@ private:
             lightIntensity /= 2.0f;
             break;
         }
+    }
+
+    void UpdateObjectCB(
+        UINT index,
+        const XMMATRIX& world,
+        const XMMATRIX& view,
+        const XMMATRIX& proj,
+        const XMFLOAT4& baseColor,
+        UINT cbSize)
+    {
+        ObjectConstants cb{};
+
+        XMStoreFloat4x4(&cb.world, XMMatrixTranspose(world));
+        XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
+
+        cb.lightPosition = lightPosition;
+        cb.lightIntensity = isLightOn ? lightIntensity : 0.0f;
+        cb.cameraPosition = m_cameraPos;
+        cb.baseColor = baseColor;
+
+        memcpy(m_cbvDataBegin + index * cbSize, &cb, sizeof(cb));
     }
 
     // ----------------------------------------------------------------------------------
