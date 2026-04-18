@@ -95,6 +95,8 @@ private:
     ComPtr<ID3D12CommandAllocator> m_commandAllocators[FrameCount];
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12Fence> m_fence;
+    ComPtr<ID3D12Resource> m_depthStencil;
+    ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
     UINT64 m_fenceValues[FrameCount] = {};
     HANDLE m_fenceEvent = nullptr;
     UINT m_frameIndex = 0;
@@ -277,6 +279,40 @@ private:
         ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
         m_fenceValues[m_frameIndex] = 1;
         m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+
+        D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+        dsvHeapDesc.NumDescriptors = 1;
+        dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+        dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
+
+        D3D12_RESOURCE_DESC depthDesc = {};
+        depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        depthDesc.Width = Width;
+        depthDesc.Height = Height;
+        depthDesc.DepthOrArraySize = 1;
+        depthDesc.MipLevels = 1;
+        depthDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        depthDesc.SampleDesc.Count = 1;
+        depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+        D3D12_CLEAR_VALUE depthClearValue = {};
+        depthClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+        depthClearValue.DepthStencil.Depth = 1.0f;
+
+        D3D12_HEAP_PROPERTIES depthHeapProps = {};
+        depthHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &depthHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &depthDesc,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            &depthClearValue,
+            IID_PPV_ARGS(&m_depthStencil)));
+
+        m_device->CreateDepthStencilView(m_depthStencil.Get(), nullptr, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
     }
 
     void LoadAssets()
@@ -334,7 +370,13 @@ private:
         psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
+
+        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; 
+        psoDesc.DepthStencilState.DepthEnable = TRUE;
+        psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+        psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+        psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+
         psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
         psoDesc.RasterizerState.DepthClipEnable = TRUE;
         psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
@@ -634,9 +676,14 @@ private:
         D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
         rtvHandle.ptr += static_cast<SIZE_T>(m_frameIndex) * m_rtvDescriptorSize;
 
+        D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+
         const float clearColor[] = { 0.02f, 0.02f, 0.03f, 1.0f };
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-        m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+        m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+        m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 
         m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
         m_commandList->RSSetViewports(1, &m_viewport);
@@ -647,15 +694,12 @@ private:
         ID3D12DescriptorHeap* heaps[] = { m_srvHeap.Get() };
         m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-
         for (UINT i = 0; i < ObjectCount; i++)
         {
             m_commandList->IASetVertexBuffers(0, 1, &m_objects[i].vbv);
             m_commandList->IASetIndexBuffer(&m_objects[i].ibv);
             m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize));
-
             m_commandList->SetGraphicsRootDescriptorTable(1, m_objects[i].srvGpu);
-
             m_commandList->DrawIndexedInstanced(m_objects[i].indexCount, 1, 0, 0, 0);
         }
 
