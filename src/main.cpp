@@ -454,7 +454,7 @@ private:
         //m_objects[0].mesh = ModelLoader::CreateCubeMesh();
         m_objects[0].mesh = ModelLoader::LoadOBJ("Assets/room.obj");
         CreateMeshBuffers(m_objects[0]);
-        LoadDDSTexture(L"Assets/energy.dds", 0, m_objects[0]);
+        LoadDDSTexture(L"Assets/bricks.dds", 0, m_objects[0]);
 
         m_objects[1].mesh = ModelLoader::LoadOBJ("Assets/scene-base.obj");
         CreateMeshBuffers(m_objects[1]);
@@ -681,9 +681,9 @@ private:
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u; 
 
         // Render objects
-        UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.55f, 0.60f, 0.70f, 1.0f), cbSize);
-        UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), cbSize);
-        UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), cbSize);
+        UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.60f, 0.60f, 0.60f, 1.0f), 6.0f, cbSize);
+        UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(0.65f, 0.20f, 0.10f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
     }
 
     void Render()
@@ -776,17 +776,17 @@ private:
         const XMMATRIX& view,
         const XMMATRIX& proj,
         const XMFLOAT4& baseColor,
+        float uvScale, 
         UINT cbSize)
     {
         ObjectConstants cb{};
-
         XMStoreFloat4x4(&cb.world, XMMatrixTranspose(world));
         XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
-
         cb.lightPosition = lightPosition;
         cb.lightIntensity = isLightOn ? lightIntensity : 0.0f;
         cb.cameraPosition = m_cameraPos;
         cb.baseColor = baseColor;
+        cb.uvScale = uvScale; 
 
         memcpy(m_cbvDataBegin + index * cbSize, &cb, sizeof(cb));
     }
