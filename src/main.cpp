@@ -1,3 +1,7 @@
+#include "StructDef.h"
+#include "ModelLoader.h"
+#include "Win32Window.h"
+
 #include <windows.h>
 #include <wrl.h>
 #include <shellapi.h>
@@ -16,148 +20,14 @@
 
 #include <random>
 
+using Microsoft::WRL::ComPtr;
+using namespace DirectX;
+
 // Random engine (initialize once, e.g., in constructor or globally)
 std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_real_distribution<float> speedDist(1.5f, 5.0f);
 
-float m_speeds[10]; // initialize once
-bool isLightOn = true;
-float lightIntensity = 16.0f;
-
-// Then in your update:
-
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-
-static const UINT FrameCount = 2;
-static const UINT Width = 1280;
-static const UINT Height = 720;
-static const UINT ObjectCount = 2;
-
-inline void ThrowIfFailed(HRESULT hr)
-{
-    if (FAILED(hr))
-        throw std::runtime_error("HRESULT failed.");
-}
-
-
-struct Vertex
-{
-    XMFLOAT3 position;
-    XMFLOAT2 uv;
-};
-
-struct alignas(256) ObjectConstants
-{
-    XMFLOAT4X4 world;
-    XMFLOAT4X4 worldViewProj;
-    XMFLOAT3 lightPosition;
-    float lightIntensity;
-    XMFLOAT3 cameraPosition;
-    float padding;
-    XMFLOAT4 baseColor;
-};
-
-struct Mesh
-{
-    std::vector<Vertex> vertices;
-    std::vector<uint16_t> indices;
-};
-
-struct ObjectRenderData
-{
-    Mesh mesh;
-    ComPtr<ID3D12Resource> vertexBuffer;
-    ComPtr<ID3D12Resource> vertexUpload;
-    ComPtr<ID3D12Resource> indexBuffer;
-    ComPtr<ID3D12Resource> indexUpload;
-    D3D12_VERTEX_BUFFER_VIEW vbv{};
-    D3D12_INDEX_BUFFER_VIEW ibv{};
-    UINT indexCount = 0;
-
-    ComPtr<ID3D12Resource> texture;
-    ComPtr<ID3D12Resource> textureUpload;
-    D3D12_GPU_DESCRIPTOR_HANDLE srvGpu{};
-};
-
-struct DDS_PIXELFORMAT
-{
-    uint32_t size;
-    uint32_t flags;
-    uint32_t fourCC;
-    uint32_t rgbBitCount;
-    uint32_t rBitMask;
-    uint32_t gBitMask;
-    uint32_t bBitMask;
-    uint32_t aBitMask;
-};
-
-struct DDS_HEADER
-{
-    uint32_t size;
-    uint32_t flags;
-    uint32_t height;
-    uint32_t width;
-    uint32_t pitchOrLinearSize;
-    uint32_t depth;
-    uint32_t mipMapCount;
-    uint32_t reserved1[11];
-    DDS_PIXELFORMAT ddspf;
-    uint32_t caps;
-    uint32_t caps2;
-    uint32_t caps3;
-    uint32_t caps4;
-    uint32_t reserved2;
-};
-
-Mesh LoadOBJ(const std::string& filename) {
-    Mesh mesh;
-    std::ifstream file(filename);
-    if (!file.is_open()) throw std::runtime_error("Nie znaleziono pliku modelu!");
-
-    std::vector<XMFLOAT3> temp_positions;
-    std::vector<XMFLOAT2> temp_uvs;
-
-    std::string line;
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string prefix;
-        ss >> prefix;
-
-        if (prefix == "v") {
-            XMFLOAT3 pos;
-            ss >> pos.x >> pos.y >> pos.z;
-            temp_positions.push_back(pos);
-        }
-        else if (prefix == "vt") {
-            XMFLOAT2 uv;
-            ss >> uv.x >> uv.y;
-            uv.y = 1.0f - uv.y;
-            temp_uvs.push_back(uv);
-        }
-        else if (prefix == "f") {
-            for (int i = 0; i < 3; i++) {
-                std::string vertexData;
-                ss >> vertexData;
-
-                int vIdx, tIdx;
-                replace(vertexData.begin(), vertexData.end(), '/', ' ');
-                std::stringstream vss(vertexData);
-                vss >> vIdx >> tIdx;
-
-                Vertex v;
-                v.position = temp_positions[vIdx - 1];
-                v.uv = temp_uvs[tIdx - 1];
-
-                mesh.vertices.push_back(v);
-                mesh.indices.push_back((uint16_t)mesh.indices.size());
-            }
-        }
-    }
-    return mesh;
-}
 
 class Dx12App
 {
@@ -168,6 +38,7 @@ public:
         CreateAppWindow(hInstance, nCmdShow);
         LoadPipeline();
         LoadAssets();
+        LoadModels();
         return true;
     }
 
@@ -204,6 +75,16 @@ public:
 private:
     HWND m_hwnd = nullptr;
 
+    // App params
+    static const UINT FrameCount = 2;
+    static const UINT Width = 1280;
+    static const UINT Height = 720;
+    static const UINT ObjectCount = 2; 
+
+    // Object data array
+    ObjectRenderData m_objects[ObjectCount];
+
+    // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
     ComPtr<ID3D12Device> m_device;
     ComPtr<ID3D12CommandQueue> m_commandQueue;
@@ -221,38 +102,37 @@ private:
     UINT m_rtvDescriptorSize = 0;
     UINT m_srvDescriptorSize = 0;
 
+    // Camera params (TEMP)
     DirectX::XMFLOAT3 m_cameraPos = { 0.0f, -2.5f, -5.0f }; // Startowa pozycja
     float m_moveSpeed = 10.0f;
     float m_cameraYaw = 0.0f;     
     float m_rotationSpeed = 2.0f;
 
+    // Light params (TEMP)
+    bool isLightOn = true;
+    float lightIntensity = 16.0f;
+
+    // GPU data
     ComPtr<ID3D12RootSignature> m_rootSignature;
     ComPtr<ID3D12PipelineState> m_pipelineState;
     ComPtr<ID3D12Resource> m_constantBuffer;
     uint8_t* m_cbvDataBegin = nullptr;
 
+    // Render region
     D3D12_VIEWPORT m_viewport{};
     D3D12_RECT m_scissorRect{};
 
-    ObjectRenderData m_objects[ObjectCount];
-    float m_heights[10] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f }; ///////////////////////////
+    // ----------------------------------------------------------------------------------
+    // App initialization functions
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
+        auto* app = reinterpret_cast<Dx12App*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
+
         switch (message)
         {
         case WM_KEYDOWN:
-            switch (wParam) {
-            case VK_SPACE:
-                isLightOn = !isLightOn;
-                break;
-            case VK_UP:
-                lightIntensity *= 2.0f;
-                break;
-            case VK_DOWN:
-                lightIntensity /= 2.0f;
-                break;
-            }
+            if (app) app->HandleKeyboardInput(wParam);
             break;
 
         case WM_NCCREATE:
@@ -261,10 +141,7 @@ private:
             break;
         }
 
-        auto* app = reinterpret_cast<Dx12App*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
-        if (app)
-            return app->HandleMessage(hWnd, message, wParam, lParam);
-
+        if (app) return app->HandleMessage(hWnd, message, wParam, lParam);
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
 
@@ -491,101 +368,22 @@ private:
             IID_PPV_ARGS(&m_constantBuffer)));
 
         ThrowIfFailed(m_constantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_cbvDataBegin)));
+        WaitForGpu();
+    }
 
-        m_objects[0].mesh = CreateCubeMesh();
+    // ----------------------------------------------------------------------------------
+    // Model loading functions
+
+    void LoadModels() {
+        m_objects[0].mesh = ModelLoader::CreateCubeMesh();
         CreateMeshBuffers(m_objects[0]);
         LoadDDSTexture(L"Assets/energy.dds", 0, m_objects[0]);
 
-        m_objects[1].mesh = LoadOBJ("Assets/table.obj");
+        m_objects[1].mesh = ModelLoader::LoadOBJ("Assets/table.obj");
         CreateMeshBuffers(m_objects[1]);
         LoadDDSTexture(L"Assets/crate.dds", 1, m_objects[1]);
-
-        ExecuteAndWaitForUploads();
     }
-
-    Mesh CreateQuadMesh()
-    {
-        Mesh m;
-        m.vertices = {
-            {{-1.0f, -1.0f, 0.0f}, {0.0f, 1.0f}}, // bottom-left
-            {{-1.0f,  1.0f, 0.0f}, {0.0f, 0.0f}}, // top-left
-            {{ 1.0f,  1.0f, 0.0f}, {1.0f, 0.0f}}, // top-right
-            {{ 1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}}  // bottom-right
-        };
-        m.indices = {
-            0, 1, 2,
-            0, 2, 3
-        };
-        return m;
-    }
-
-    Mesh CreateCubeMesh()
-    {
-        Mesh m;
-        m.vertices = {
-            {{-1,-1,-1},{0,1}}, {{-1, 1,-1},{0,0}}, {{ 1, 1,-1},{1,0}}, {{ 1,-1,-1},{1,1}},
-            {{-1,-1, 1},{1,1}}, {{ 1,-1, 1},{0,1}}, {{ 1, 1, 1},{0,0}}, {{-1, 1, 1},{1,0}},
-            {{-1, 1,-1},{0,1}}, {{-1, 1, 1},{0,0}}, {{ 1, 1, 1},{1,0}}, {{ 1, 1,-1},{1,1}},
-            {{-1,-1,-1},{1,1}}, {{ 1,-1,-1},{0,1}}, {{ 1,-1, 1},{0,0}}, {{-1,-1, 1},{1,0}},
-            {{-1,-1, 1},{0,1}}, {{-1, 1, 1},{0,0}}, {{-1, 1,-1},{1,0}}, {{-1,-1,-1},{1,1}},
-            {{ 1,-1,-1},{0,1}}, {{ 1, 1,-1},{0,0}}, {{ 1, 1, 1},{1,0}}, {{ 1,-1, 1},{1,1}}
-        };
-        m.indices = {
-            0,1,2, 0,2,3,
-            4,5,6, 4,6,7,
-            8,9,10, 8,10,11,
-            12,13,14, 12,14,15,
-            16,17,18, 16,18,19,
-            20,21,22, 20,22,23
-        };
-        return m;
-    }
-
-    Mesh CreatePyramidMesh()
-    {
-        Mesh m;
-        m.vertices = {
-            {{-1,-1,-1},{0,1}}, {{ 1,-1,-1},{1,1}}, {{ 1,-1, 1},{1,0}}, {{-1,-1, 1},{0,0}},
-            {{ 0, 1, 0},{0.5f,0.5f}},
-            {{-1,-1,-1},{0,1}}, {{ 1,-1,-1},{1,1}}, {{ 0,1,0},{0.5f,0}},
-            {{ 1,-1,-1},{0,1}}, {{ 1,-1, 1},{1,1}}, {{ 0,1,0},{0.5f,0}},
-            {{ 1,-1, 1},{0,1}}, {{-1,-1, 1},{1,1}}, {{ 0,1,0},{0.5f,0}},
-            {{-1,-1, 1},{0,1}}, {{-1,-1,-1},{1,1}}, {{ 0,1,0},{0.5f,0}}
-        };
-        m.indices = {
-            0,2,1, 0,3,2,
-            5,6,7,
-            8,9,10,
-            11,12,13,
-            14,15,16
-        };
-        return m;
-    }
-
-    Mesh CreateOctahedronMesh()
-    {
-        Mesh m;
-        m.vertices = {
-            {{ 0, 1, 0},{0.5f,0}},
-            {{ 1, 0, 0},{1,0.5f}},
-            {{ 0, 0, 1},{0.5f,1}},
-            {{-1, 0, 0},{0,0.5f}},
-            {{ 0, 0,-1},{0.5f,0}},
-            {{ 0,-1, 0},{0.5f,1}}
-        };
-        m.indices = {
-            0,1,2,
-            0,2,3,
-            0,3,4,
-            0,4,1,
-            5,2,1,
-            5,3,2,
-            5,4,3,
-            5,1,4
-        };
-        return m;
-    }
-
+    
     void CreateMeshBuffers(ObjectRenderData& obj)
     {
         const UINT vbSize = static_cast<UINT>(obj.mesh.vertices.size() * sizeof(Vertex));
@@ -647,11 +445,6 @@ private:
         ThrowIfFailed(m_commandList->Close());
         ID3D12CommandList* lists[] = { m_commandList.Get() };
         m_commandQueue->ExecuteCommandLists(1, lists);
-        WaitForGpu();
-    }
-
-    void ExecuteAndWaitForUploads()
-    {
         WaitForGpu();
     }
 
@@ -767,6 +560,9 @@ private:
         obj.srvGpu = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
         obj.srvGpu.ptr += static_cast<UINT64>(descriptorIndex) * m_srvDescriptorSize;
     }
+
+    // ----------------------------------------------------------------------------------
+    // Render Loop
 
     void Update(float deltaTime)
     {
@@ -891,6 +687,29 @@ private:
         m_fenceValues[m_frameIndex] = currentFenceValue + 1;
     }
 
+    void HandleKeyboardInput(WPARAM wParam) {
+        switch (wParam) {
+        case VK_SPACE:
+            isLightOn = !isLightOn;
+            break;
+        case VK_UP:
+            lightIntensity *= 2.0f;
+            break;
+        case VK_DOWN:
+            lightIntensity /= 2.0f;
+            break;
+        }
+    }
+
+    // ----------------------------------------------------------------------------------
+    // Utils
+
+    inline void ThrowIfFailed(HRESULT hr)
+    {
+        if (FAILED(hr))
+            throw std::runtime_error("HRESULT failed.");
+    }
+
     void WaitForGpu()
     {
         ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValues[m_frameIndex]));
@@ -929,6 +748,10 @@ private:
         throw std::runtime_error("Brak odpowiedniego adaptera D3D12.");
     }
 };
+
+
+    // ----------------------------------------------------------------------------------
+    // Entry Point
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int nCmdShow)
 {
