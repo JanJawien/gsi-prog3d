@@ -6,6 +6,5 @@
 class ModelLoader
 {
 public:
-    static Mesh CreateCubeMesh();
-    static Mesh LoadOBJ(const std::string& filename);
+    static Mesh LoadOBJ(const std::string& filename, float offsetX, float offsetY, float offsetZ);
 };

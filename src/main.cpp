@@ -103,7 +103,7 @@ private:
     UINT m_srvDescriptorSize = 0;
 
     // Camera params (TEMP)
-    DirectX::XMFLOAT3 m_cameraPos = { 0.0f, -2.5f, -5.0f }; // Startowa pozycja
+    DirectX::XMFLOAT3 m_cameraPos = { 0.0f, 0.0f, 0.0f }; // Startowa pozycja
     float m_moveSpeed = 10.0f;
     float m_cameraYaw = 0.0f;     
     float m_rotationSpeed = 2.0f;
@@ -375,7 +375,8 @@ private:
     // Model loading functions
 
     void LoadModels() {
-        m_objects[0].mesh = ModelLoader::CreateCubeMesh();
+        //m_objects[0].mesh = ModelLoader::CreateCubeMesh();
+        m_objects[0].mesh = ModelLoader::LoadOBJ("Assets/room.obj");
         CreateMeshBuffers(m_objects[0]);
         LoadDDSTexture(L"Assets/energy.dds", 0, m_objects[0]);
 
