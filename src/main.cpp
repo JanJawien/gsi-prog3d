@@ -1,6 +1,5 @@
 #include "StructDef.h"
 #include "ModelLoader.h"
-#include "Win32Window.h"
 
 #include <windows.h>
 #include <wrl.h>

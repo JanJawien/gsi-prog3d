@@ -13,9 +13,9 @@ using namespace DirectX;
 /// Use offset parameters to offset loaded model
 /// </summary>
 Mesh ModelLoader::LoadOBJ(const std::string& filename,
-    float offsetX = 0.0f,
-    float offsetY = 0.0f,
-    float offsetZ = 0.0f)
+    float offsetX,
+    float offsetY,
+    float offsetZ)
 {
     Mesh mesh;
 
