@@ -23,7 +23,7 @@ struct alignas(256) ObjectConstants
     XMFLOAT3 lightPosition;
     float lightIntensity;
     XMFLOAT3 cameraPosition;
-    float padding;
+    float uvScale; 
     XMFLOAT4 baseColor;
 };
 

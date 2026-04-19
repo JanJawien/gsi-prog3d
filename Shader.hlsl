@@ -5,7 +5,7 @@ cbuffer ObjectCB : register(b0)
     float3 lightPosition;
     float lightIntensity;
     float3 cameraPosition;
-    float padding0;
+    float uvScale; 
     float4 baseColor;
 };
 
@@ -38,7 +38,12 @@ PSInput VSMain(VSInput input)
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    // Obliczanie normalnej (żeby było widać bryłę - Flat Shading)
+    // 1. NAPRAWA OBROTU I SKALOWANIA
+    // Jeśli cegły stoją pionowo, zamieniamy X z Y (input.uv.yx). 
+    // Mnożymy przez uvScale, żeby zagęścić teksturę.
+    float2 tiledUV = input.uv.yx * uvScale; 
+
+    // Obliczanie normalnej (zostaje bez zmian)
     float3 dpdx = ddx(input.worldPos);
     float3 dpdy = ddy(input.worldPos);
     float3 normal = normalize(cross(dpdy, dpdx));
@@ -46,9 +51,10 @@ float4 PSMain(PSInput input) : SV_TARGET
     float3 viewDir = normalize(cameraPosition - input.worldPos);
     if (dot(normal, viewDir) < 0.0f) normal = -normal;
 
-    // POBIERANIE KOLORU Z TEKSTURY
-    float4 texColor = gTexture.Sample(gSampler, input.uv);
+    // 2. PRÓBKOWANIE Z NOWYMI UV
+    float4 texColor = gTexture.Sample(gSampler, tiledUV);
 
+    // Reszta oświetlenia bez zmian...
     float3 toLight = lightPosition - input.worldPos;
     float dist = max(length(toLight), 0.0001f);
     float3 lightDir = toLight / dist;
@@ -57,6 +63,5 @@ float4 PSMain(PSInput input) : SV_TARGET
     float attenuation = 1.0f / (1.0f + dist * dist * 0.1f);
     float lighting = 0.15f + ndotl * lightIntensity * attenuation;
 
-    // Łączymy kolor tekstury, bazowy i oświetlenie
     return float4(texColor.rgb * baseColor.rgb * lighting, 1.0f);
 }
