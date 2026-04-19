@@ -16,15 +16,35 @@ struct Vertex
     XMFLOAT2 uv;
 };
 
+struct Light
+{
+    XMFLOAT3 position;
+    float intensity;
+
+    XMFLOAT3 color;
+    float range;
+
+    XMFLOAT3 direction;
+    float spotPower;
+
+    int type; 
+    int isEnabled;  
+    XMFLOAT2 pad;   
+};
+
 struct alignas(256) ObjectConstants
 {
     XMFLOAT4X4 world;
     XMFLOAT4X4 worldViewProj;
-    XMFLOAT3 lightPosition;
-    float lightIntensity;
+
     XMFLOAT3 cameraPosition;
-    float uvScale; 
+    float uvScale;
+
     XMFLOAT4 baseColor;
+
+    Light lights[16];
+    int lightCount;
+    XMFLOAT3 padding;
 };
 
 struct Mesh
