@@ -79,7 +79,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 4; 
+    static const UINT ObjectCount = 7; 
 
     // Object data array
     ObjectRenderData m_objects[ObjectCount];
@@ -489,13 +489,25 @@ private:
         CreateMeshBuffers(m_objects[1]);
         LoadDDSTexture(L"Assets/energy.dds", 1, m_objects[1]);
 
-        m_objects[2].mesh = ModelLoader::LoadOBJ("Assets/chairs-and-tables.obj");
+        m_objects[2].mesh = ModelLoader::LoadOBJ("Assets/tables-and-chairs.obj");
         CreateMeshBuffers(m_objects[2]);
-        LoadDDSTexture(L"Assets/crate.dds", 2, m_objects[2]);
+        LoadDDSTexture(L"Assets/wood.dds", 2, m_objects[2]);
 
         m_objects[3].mesh = ModelLoader::LoadOBJ("Assets/stairs.obj");
         CreateMeshBuffers(m_objects[3]);
-        LoadDDSTexture(L"Assets/crate.dds", 3, m_objects[3]);
+        LoadDDSTexture(L"Assets/wood.dds", 3, m_objects[3]);
+
+        m_objects[4].mesh = ModelLoader::LoadOBJ("Assets/dj-setup.obj");
+        CreateMeshBuffers(m_objects[4]);
+        LoadDDSTexture(L"Assets/black.dds", 4, m_objects[4]);
+
+        m_objects[5].mesh = ModelLoader::LoadOBJ("Assets/dj-desk.obj");
+        CreateMeshBuffers(m_objects[5]);
+        LoadDDSTexture(L"Assets/crate.dds", 5, m_objects[5]);
+
+        m_objects[6].mesh = ModelLoader::LoadOBJ("Assets/speakers.obj");
+        CreateMeshBuffers(m_objects[6]);
+        LoadDDSTexture(L"Assets/black.dds", 6, m_objects[6]);
     }
     
     void CreateMeshBuffers(ObjectRenderData& obj)
@@ -717,11 +729,16 @@ private:
         UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.60f, 0.60f, 0.60f, 1.0f), 6.0f, cbSize);
 		// Scene base
         UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(0.65f, 0.20f, 0.10f, 1.0f), 1.0f, cbSize);
-        // Chairs and Tables
-        UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // Tables and chairs
+        UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(0.80f, 0.55f, 0.35f, 1.0f), 0.2f, cbSize);
 		// Stairs
-        UpdateObjectCB(3, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-
+        UpdateObjectCB(3, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 0.7f, 0.5f, 1.0f), 0.1f, cbSize);
+        // DJ setup
+        UpdateObjectCB(4, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        // DJ desk
+        UpdateObjectCB(5, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // Speakers
+        UpdateObjectCB(6, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
     }
 
     void Render()
