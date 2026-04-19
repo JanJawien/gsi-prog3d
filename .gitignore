@@ -2,6 +2,7 @@
 .vs/
 *.user
 UpgradeLog.htm
+*vcxproj*
 
 # Build outputs
 bin/
