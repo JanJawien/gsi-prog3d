@@ -79,7 +79,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 3; 
+    static const UINT ObjectCount = 4; 
 
     // Object data array
     ObjectRenderData m_objects[ObjectCount];
@@ -489,9 +489,13 @@ private:
         CreateMeshBuffers(m_objects[1]);
         LoadDDSTexture(L"Assets/energy.dds", 1, m_objects[1]);
 
-        m_objects[2].mesh = ModelLoader::LoadOBJ("Assets/table.obj");
+        m_objects[2].mesh = ModelLoader::LoadOBJ("Assets/chairs-and-tables.obj");
         CreateMeshBuffers(m_objects[2]);
         LoadDDSTexture(L"Assets/crate.dds", 2, m_objects[2]);
+
+        m_objects[3].mesh = ModelLoader::LoadOBJ("Assets/stairs.obj");
+        CreateMeshBuffers(m_objects[3]);
+        LoadDDSTexture(L"Assets/crate.dds", 3, m_objects[3]);
     }
     
     void CreateMeshBuffers(ObjectRenderData& obj)
@@ -709,10 +713,15 @@ private:
 
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u; 
 
-        // Render objects
+        // Room
         UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.60f, 0.60f, 0.60f, 1.0f), 6.0f, cbSize);
+		// Scene base
         UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(0.65f, 0.20f, 0.10f, 1.0f), 1.0f, cbSize);
+        // Chairs and Tables
         UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+		// Stairs
+        UpdateObjectCB(3, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+
     }
 
     void Render()
