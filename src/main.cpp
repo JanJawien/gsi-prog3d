@@ -786,15 +786,13 @@ private:
     void HandleKeyboardInput(WPARAM wParam) {
         switch (wParam) {
         case VK_SPACE:
-            //m_lights[0].isEnabled = !m_lights[0].isEnabled;
+            m_lighting.ToggleAmbientLight();
             break;
         case VK_UP:
-            //m_lights[1].intensity *= 1.3f;
-            //m_lights[2].intensity *= 1.3f;
+            m_lighting.AddSceneLight();
             break;
         case VK_DOWN:
-            //m_lights[1].intensity /= 1.3f;
-            //m_lights[2].intensity /= 1.3f;
+            m_lighting.RemoveSceneLight();
             break;
         }
     }

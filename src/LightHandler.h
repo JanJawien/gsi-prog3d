@@ -9,6 +9,8 @@ private:
     std::vector<Light> lightsScene;
     std::vector<Light> lightsOther;
     int m_lightCount = 0;
+    void SceneLightDistribute(int targetCount);
+
 public:
     // Init functions
     void InitLights();
@@ -20,4 +22,6 @@ public:
     // Lighting effects
     void ToggleAmbientLight();
     void ToggleSceneLights();
+    void AddSceneLight();
+    void RemoveSceneLight();
 };
