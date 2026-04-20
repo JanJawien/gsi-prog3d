@@ -1,6 +1,7 @@
 #include "StructDef.h"
 #include "ModelLoader.h"
 #include "LightHandler.h" 
+#include "Camera.h"
 
 #include <windows.h>
 #include <wrl.h>
@@ -69,6 +70,7 @@ public:
 
         WaitForGpu();
         CloseHandle(m_fenceEvent);
+        ShowCursor(TRUE);
         return static_cast<int>(msg.wParam);
     }
 
@@ -105,11 +107,7 @@ private:
     UINT m_rtvDescriptorSize = 0;
     UINT m_srvDescriptorSize = 0;
 
-    // Camera params (TEMP)
-    DirectX::XMFLOAT3 m_cameraPos = { 0.0f, 1.8f, 0.0f }; // Startowa pozycja
-    float m_moveSpeed = 2.0f;
-    float m_cameraYaw = 3.14f/2;     
-    float m_rotationSpeed = 2.0f;
+    Camera m_camera;
 
     // Light handler
     LightHandler m_lighting;
@@ -134,13 +132,21 @@ private:
         switch (message)
         {
         case WM_KEYDOWN:
-            if (app) app->HandleKeyboardInput(wParam);
+            if (app && GetForegroundWindow() == hWnd)
+                app->HandleKeyboardInput(wParam);
+            break;
+
+        case WM_ACTIVATE:
+            if (app && LOWORD(wParam) == WA_INACTIVE)
+                app->ResetMouse();
             break;
 
         case WM_NCCREATE:
+        {
             CREATESTRUCT* createStruct = reinterpret_cast<CREATESTRUCT*>(lParam);
             SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(createStruct->lpCreateParams));
             break;
+        }
         }
 
         if (app) return app->HandleMessage(hWnd, message, wParam, lParam);
@@ -190,6 +196,7 @@ private:
             this);
 
         ShowWindow(m_hwnd, nCmdShow);
+        ShowCursor(FALSE);
     }
 
     void LoadPipeline()
@@ -664,29 +671,9 @@ private:
     void Update(float deltaTime)
     {
         // Move camera
-        if (GetAsyncKeyState('Q') & 0x8000) m_cameraYaw -= m_rotationSpeed * deltaTime;
-        if (GetAsyncKeyState('E') & 0x8000) m_cameraYaw += m_rotationSpeed * deltaTime;
+        m_camera.Update(deltaTime, m_hwnd);
 
-        float sinYaw = sinf(m_cameraYaw);
-        float cosYaw = cosf(m_cameraYaw);
-
-        XMVECTOR forward = XMVectorSet(sinYaw, 0.0f, cosYaw, 0.0f);
-        XMVECTOR right = XMVectorSet(cosYaw, 0.0f, -sinYaw, 0.0f);
-        XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-        XMVECTOR pos = XMLoadFloat3(&m_cameraPos);
-
-        if (GetAsyncKeyState('W') & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(forward, m_moveSpeed * deltaTime));
-        if (GetAsyncKeyState('S') & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(forward, m_moveSpeed * deltaTime));
-        if (GetAsyncKeyState('D') & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(right, m_moveSpeed * deltaTime));
-        if (GetAsyncKeyState('A') & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(right, m_moveSpeed * deltaTime));       
-        if (GetAsyncKeyState(VK_LSHIFT) & 0x8000) pos = XMVectorAdd(pos, XMVectorScale(up, m_moveSpeed * deltaTime));       
-        if (GetAsyncKeyState(VK_LCONTROL) & 0x8000) pos = XMVectorSubtract(pos, XMVectorScale(up, m_moveSpeed * deltaTime));
-
-        XMStoreFloat3(&m_cameraPos, pos);
-
-        XMVECTOR camTarget = XMVectorAdd(pos, forward);
-        XMVECTOR camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-        XMMATRIX view = XMMatrixLookAtLH(pos, camTarget, camUp);
+        XMMATRIX view = m_camera.GetViewMatrix();
 
         XMMATRIX proj = XMMatrixPerspectiveFovLH(
             XMConvertToRadians(60.0f),
@@ -825,6 +812,11 @@ private:
         }
     }
 
+    void ResetMouse()
+    {
+        m_camera.ResetMouse();
+    }
+
     void UpdateObjectCB(
         UINT index,
         const XMMATRIX& world,
@@ -839,7 +831,7 @@ private:
         XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
         cb.lightCount = m_lighting.GetLightCount();
         m_lighting.UpdateLights(cb.lights, cb.lightCount);
-        cb.cameraPosition = m_cameraPos;
+        cb.cameraPosition = m_camera.GetPosition();
         cb.baseColor = baseColor;
         cb.uvScale = uvScale; 
 

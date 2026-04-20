@@ -80,6 +80,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Camera.cpp" />
+    <ClCompile Include="src\LightHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\ModelLoader.cpp" />
   </ItemGroup>
@@ -91,6 +93,8 @@
     <None Include="assets\energy.dds" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Camera.h" />
+    <ClInclude Include="src\LightHandler.h" />
     <ClInclude Include="src\ModelLoader.h" />
     <ClInclude Include="src\StructDef.h" />
   </ItemGroup>
