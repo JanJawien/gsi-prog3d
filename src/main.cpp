@@ -1,5 +1,5 @@
 #include "StructDef.h"
-#include "ModelLoader.h"
+#include "ObjectHandler.h"
 #include "LightHandler.h" 
 #include "Camera.h"
 
@@ -83,9 +83,6 @@ private:
     static const UINT Height = 720;
     static const UINT ObjectCount = 7; 
 
-    // Object data array
-    ObjectRenderData m_objects[ObjectCount];
-
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
     ComPtr<ID3D12Device> m_device;
@@ -114,8 +111,8 @@ private:
     float m_djDeskAngle = 0.0f;
     DirectX::XMFLOAT3 m_djDeskCenter = { 0.0f, 0.0f, 0.0f };
 
-    // Light handler
     LightHandler m_lighting;
+    ObjectHandler m_objects;
 
     // GPU data
     ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -463,36 +460,14 @@ private:
     // Model loading functions
 
     void LoadModels() {
-        //m_objects[0].mesh = ModelLoader::CreateCubeMesh();
-        m_objects[0].mesh = ModelLoader::LoadOBJ("Assets/room.obj");
-        CreateMeshBuffers(m_objects[0]);
-        LoadDDSTexture(L"Assets/bricks.dds", 0, m_objects[0]);
+        m_objects.SetMeshBufferFunc([this](ObjectRenderData& obj) {
+            CreateMeshBuffers(obj); });
+        m_objects.SetTextureFunc([this](const wchar_t* path, UINT i, ObjectRenderData& obj) {
+            LoadDDSTexture(path, i, obj); });
 
-        m_objects[1].mesh = ModelLoader::LoadOBJ("Assets/scene-base.obj");
-        CreateMeshBuffers(m_objects[1]);
-        LoadDDSTexture(L"Assets/energy.dds", 1, m_objects[1]);
-
-        m_objects[2].mesh = ModelLoader::LoadOBJ("Assets/tables-and-chairs.obj");
-        CreateMeshBuffers(m_objects[2]);
-        LoadDDSTexture(L"Assets/wood.dds", 2, m_objects[2]);
-
-        m_objects[3].mesh = ModelLoader::LoadOBJ("Assets/stairs.obj");
-        CreateMeshBuffers(m_objects[3]);
-        LoadDDSTexture(L"Assets/wood.dds", 3, m_objects[3]);
-
-        m_objects[4].mesh = ModelLoader::LoadOBJ("Assets/dj-setup.obj");
-        CreateMeshBuffers(m_objects[4]);
-        LoadDDSTexture(L"Assets/black.dds", 4, m_objects[4]);
-
-        m_objects[5].mesh = ModelLoader::LoadOBJ("Assets/dj-desk.obj");
-        CreateMeshBuffers(m_objects[5]);
-        LoadDDSTexture(L"Assets/crate.dds", 5, m_objects[5]);
-        m_djDeskCenter = CalculateMeshCenter(m_objects[5].mesh);
-
-        m_objects[6].mesh = ModelLoader::LoadOBJ("Assets/speakers.obj");
-        CreateMeshBuffers(m_objects[6]);
-        LoadDDSTexture(L"Assets/black.dds", 6, m_objects[6]);
+        m_objects.LoadAllObjects();
     }
+
     
     void CreateMeshBuffers(ObjectRenderData& obj)
     {
@@ -749,14 +724,17 @@ private:
         ID3D12DescriptorHeap* heaps[] = { m_srvHeap.Get() };
         m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
 
-        for (UINT i = 0; i < ObjectCount; i++)
+        int i = 0;
+        for (auto& obj : m_objects.GetObjects())
         {
-            m_commandList->IASetVertexBuffers(0, 1, &m_objects[i].vbv);
-            m_commandList->IASetIndexBuffer(&m_objects[i].ibv);
+            m_commandList->IASetVertexBuffers(0, 1, &obj.vbv);
+            m_commandList->IASetIndexBuffer(&obj.ibv);
             m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize));
-            m_commandList->SetGraphicsRootDescriptorTable(1, m_objects[i].srvGpu);
-            m_commandList->DrawIndexedInstanced(m_objects[i].indexCount, 1, 0, 0, 0);
+            m_commandList->SetGraphicsRootDescriptorTable(1, obj.srvGpu);
+            m_commandList->DrawIndexedInstanced(obj.indexCount, 1, 0, 0, 0);
+            ++i;
         }
+
 
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
