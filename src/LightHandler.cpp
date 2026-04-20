@@ -25,7 +25,7 @@ void LightHandler::SceneLightDistribute(int targetCount){
         if (i + 1 == count) {
             lightsScene[i] = {
                 { x, y, z }, 4.0f,
-                { 1.0f, 1.0f, 1.0f }, 20.0f,
+                sceneLightBaseColor, 20.0f,
                 { 0.0f, -1.0f, 0.0f }, GetSpotPower(),
                 1, 1, {}
             };
@@ -48,13 +48,13 @@ void LightHandler::InitLights() {
     // Scene lights
     lightsScene.push_back({
         { 6.0f, 4.5f, -3.0f }, 4.0f,
-        { 1.0f, 1.0f, 1.0f }, 20.0f,
+        sceneLightBaseColor, 20.0f,
         { 0.0f, -1.0f, 0.0f }, GetSpotPower(),
         1, 1, {}
         });
     lightsScene.push_back({
         { 6.0f, 4.5f, 3.0f }, 4.0f,
-        { 1.0f, 1.0f, 1.0f }, 20.0f,
+        sceneLightBaseColor, 20.0f,
         { 0.0f, -1.0f, 0.0f }, GetSpotPower(),
         1, 1, {}
         });
@@ -115,6 +115,11 @@ void LightHandler::AddSceneLight() {
 
 void LightHandler::RemoveSceneLight() {
     SceneLightDistribute(lightsScene.size() - 1);
+}
+
+void LightHandler::_TEMP_SetSceneLightBaseColor(float r, float g, float b) {
+    sceneLightBaseColor = { r, g, b };
+    for (auto& l : lightsScene) { l.color = sceneLightBaseColor; }
 }
 
 

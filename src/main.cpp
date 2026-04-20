@@ -800,6 +800,28 @@ private:
             break;
         case VK_OEM_MINUS:
             break;
+
+        case '1':
+            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 0.0f, 0.0f);
+            break;
+        case '2':
+            m_lighting._TEMP_SetSceneLightBaseColor(0.0f, 1.0f, 0.0f);
+            break;
+        case '3':
+            m_lighting._TEMP_SetSceneLightBaseColor(0.0f, 0.0f, 1.0f);
+            break;
+        case '4':
+            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 1.0f, 0.0f);
+            break;
+        case '5':
+            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 0.0f, 1.0f);
+            break;
+        case '6':
+            m_lighting._TEMP_SetSceneLightBaseColor(0.0f, 1.0f, 1.0f);
+            break;
+        case '0':
+            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 1.0f, 1.0f);
+            break;
         }
     }
 

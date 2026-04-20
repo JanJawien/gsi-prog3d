@@ -12,6 +12,7 @@ private:
     std::vector<Light> lightsScene;
     std::vector<Light> lightsOther;
     bool isSceneLightBlurOn = true;
+    XMFLOAT3 sceneLightBaseColor = {1.0, 1.0, 1.0};
 
     void SceneLightDistribute(int targetCount);
     float GetSpotPower();
@@ -31,4 +32,5 @@ public:
     void ToggleSceneLightBlur();
     void AddSceneLight();
     void RemoveSceneLight();
+    void _TEMP_SetSceneLightBaseColor(float r, float g, float b);
 };
