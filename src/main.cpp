@@ -34,7 +34,6 @@ class Dx12App
 public:
     bool Initialize(HINSTANCE hInstance, int nCmdShow)
     {
-        m_lighting.InitLights();
         RegisterWindowClass(hInstance);
         CreateAppWindow(hInstance, nCmdShow);
         LoadPipeline();
@@ -791,8 +790,15 @@ private:
         case VK_UP:
             m_lighting.AddSceneLight();
             break;
-        case VK_DOWN:
+        case VK_DOWN: 
             m_lighting.RemoveSceneLight();
+            break;
+        case 'B':
+            m_lighting.ToggleSceneLightBlur();
+            break;
+        case VK_OEM_PLUS:
+            break;
+        case VK_OEM_MINUS:
             break;
         }
     }

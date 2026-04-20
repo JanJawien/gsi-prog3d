@@ -3,17 +3,23 @@
 #include <string>
 #include "StructDef.h"
 
+const int MIN_LIGHTS_SCENE = 2;
+const int MAX_LIGHTS_SCENE = 9;
+
 class LightHandler
 {
 private:
     std::vector<Light> lightsScene;
     std::vector<Light> lightsOther;
-    int m_lightCount = 0;
+    bool isSceneLightBlurOn = true;
+
     void SceneLightDistribute(int targetCount);
+    float GetSpotPower();
+    void InitLights();
 
 public:
-    // Init functions
-    void InitLights();
+    // Constructor
+    LightHandler();
 
     // Getters
     int GetLightCount();
@@ -22,6 +28,7 @@ public:
     // Lighting effects
     void ToggleAmbientLight();
     void ToggleSceneLights();
+    void ToggleSceneLightBlur();
     void AddSceneLight();
     void RemoveSceneLight();
 };
