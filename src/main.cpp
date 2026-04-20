@@ -1,5 +1,6 @@
 #include "StructDef.h"
 #include "ModelLoader.h"
+#include "LightHandler.h" 
 
 #include <windows.h>
 #include <wrl.h>
@@ -33,7 +34,7 @@ class Dx12App
 public:
     bool Initialize(HINSTANCE hInstance, int nCmdShow)
     {
-        InitLights();
+        m_lighting.InitLights();
         RegisterWindowClass(hInstance);
         CreateAppWindow(hInstance, nCmdShow);
         LoadPipeline();
@@ -111,10 +112,8 @@ private:
     float m_cameraYaw = 3.14f/2;     
     float m_rotationSpeed = 2.0f;
 
-    // Light params (TEMP)
-    static const int MAX_LIGHTS = 16;
-    Light m_lights[MAX_LIGHTS];
-    int m_lightCount = 0;
+    // Light handler
+    LightHandler m_lighting;
 
     // GPU data
     ComPtr<ID3D12RootSignature> m_rootSignature;
@@ -349,34 +348,7 @@ private:
 
         m_device->CreateDepthStencilView(m_depthStencil.Get(), nullptr, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
     }
-
-    void InitLights() {
-        m_lightCount = 3;
-
-        // Point light
-        m_lights[0] = {
-            { -3.0f, 4.5f, 0.0f }, 5.0f,   // pos, intensity
-            { 1.0f, 0.8f, 0.6f }, 20.0f,    // color, range
-            { 0,0,0 }, 1.0f,                // direction (spotlight), spot power
-            0, 1, {}                           // type (0-point, 1-spot), padding (DO NOT MODIFY)
-        };
-
-        // Spot light
-        m_lights[1] = {
-            { 6.0f, 4.5f, -2.0f }, 4.0f,   // pos, intensity
-            { 1.0f, 1.0f, 1.0f }, 20.0f,    // color, range
-            { 0,-1,0 }, 10.0f,                // direction (spotlight), spot power
-            1, 1, {}                           // type (0-point, 1-spot), padding (DO NOT MODIFY)
-        };
-
-        // Another point
-        m_lights[2] = {
-            { 6.0f, 4.5f, 2.0f }, 4.0f,   // pos, intensity
-            { 1.0f, 1.0f, 1.0f }, 20.0f,    // color, range
-            { 0,-1,0 }, 10.0f,                // direction (spotlight), spot power
-            1, 1, {}                           // type (0-point, 1-spot), padding (DO NOT MODIFY)
-        };
-    }
+    
 
     void LoadAssets()
     {
@@ -814,15 +786,15 @@ private:
     void HandleKeyboardInput(WPARAM wParam) {
         switch (wParam) {
         case VK_SPACE:
-            m_lights[0].isEnabled = !m_lights[0].isEnabled;
+            //m_lights[0].isEnabled = !m_lights[0].isEnabled;
             break;
         case VK_UP:
-            m_lights[1].intensity *= 1.3f;
-            m_lights[2].intensity *= 1.3f;
+            //m_lights[1].intensity *= 1.3f;
+            //m_lights[2].intensity *= 1.3f;
             break;
         case VK_DOWN:
-            m_lights[1].intensity /= 1.3f;
-            m_lights[2].intensity /= 1.3f;
+            //m_lights[1].intensity /= 1.3f;
+            //m_lights[2].intensity /= 1.3f;
             break;
         }
     }
@@ -839,11 +811,8 @@ private:
         ObjectConstants cb{};
         XMStoreFloat4x4(&cb.world, XMMatrixTranspose(world));
         XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
-        cb.lightCount = m_lightCount;
-        for (int i = 0; i < m_lightCount; i++)
-        {
-            cb.lights[i] = m_lights[i];
-        }
+        cb.lightCount = m_lighting.GetLightCount();
+        m_lighting.UpdateLights(cb.lights, cb.lightCount);
         cb.cameraPosition = m_cameraPos;
         cb.baseColor = baseColor;
         cb.uvScale = uvScale; 

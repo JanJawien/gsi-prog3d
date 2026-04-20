@@ -16,6 +16,7 @@ struct Vertex
     XMFLOAT2 uv;
 };
 
+const int MAX_LIGHTS = 16;
 struct Light
 {
     XMFLOAT3 position;
@@ -42,7 +43,7 @@ struct alignas(256) ObjectConstants
 
     XMFLOAT4 baseColor;
 
-    Light lights[16];
+    Light lights[MAX_LIGHTS];
     int lightCount;
     XMFLOAT3 padding;
 };
