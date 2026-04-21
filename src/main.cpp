@@ -782,6 +782,9 @@ private:
             break;
         case VK_OEM_MINUS:
             break;
+        case VK_ESCAPE:
+            PostQuitMessage(0);
+            break;
 
         case 'E':
             if (IsLookingAtPoint(m_djDeskCenter, 6.0f, 0.80f))
