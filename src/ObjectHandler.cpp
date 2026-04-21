@@ -7,6 +7,7 @@
 
 using namespace DirectX;
 
+
 // ----- private ------
 
 /// <summary>
@@ -87,7 +88,7 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
 
 void ObjectHandler::LoadObject(const std::string& objPath,
     const wchar_t* texturePath,
-    UINT index)
+    UINT index, bool isTransparent)
 {
     if (objects.size() <= index)
         objects.resize(index + 1);
@@ -96,6 +97,7 @@ void ObjectHandler::LoadObject(const std::string& objPath,
 
     obj.mesh = LoadGeometry(objPath);
     CalculateMeshCenter(obj);
+    obj.isTransparent = isTransparent;
 
     if (m_createMeshBuffers)
         m_createMeshBuffers(obj);
@@ -160,6 +162,7 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/dj-setup.obj", L"Assets/black.dds", 4);
     LoadObject("Assets/dj-desk.obj", L"Assets/crate.dds", 5);
     LoadObject("Assets/speakers.obj", L"Assets/black.dds", 6);
+    LoadObject("Assets/lights-railing.obj", L"Assets/railing.dds", 7, true);
 }
 
 // ===== public =====

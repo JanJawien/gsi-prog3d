@@ -101,5 +101,5 @@ float4 PSMain(PSInput input) : SV_TARGET
 
     float3 finalColor = texColor.rgb * baseColor.rgb * (ambient + totalLight);
 
-    return float4(finalColor, 1.0f);
+    return float4(finalColor, texColor.a);
 }

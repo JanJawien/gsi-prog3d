@@ -18,7 +18,7 @@ private:
         float offsetZ = 0.0f);
     void LoadObject(const std::string& objPath,
         const wchar_t* texturePath,
-        UINT index);
+        UINT index, bool isTransparent = false);
 
     void CalculateMeshCenter(ObjectRenderData& obj);
     bool IsCameraLookingAtObjectCenter(XMFLOAT3 camPos, XMVECTOR camFwd, ObjectRenderData obj, float maxDistance, float minDot);

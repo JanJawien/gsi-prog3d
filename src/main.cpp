@@ -81,7 +81,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 7; 
+    static const UINT ObjectCount = 8;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -116,7 +116,8 @@ private:
 
     // GPU data
     ComPtr<ID3D12RootSignature> m_rootSignature;
-    ComPtr<ID3D12PipelineState> m_pipelineState;
+    ComPtr<ID3D12PipelineState> m_pipelineStateOpaque;
+    ComPtr<ID3D12PipelineState> m_pipelineStateTransparent;
     ComPtr<ID3D12Resource> m_constantBuffer;
     uint8_t* m_cbvDataBegin = nullptr;
 
@@ -256,7 +257,7 @@ private:
         dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
         dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
         ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
-
+        
         D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
         srvHeapDesc.NumDescriptors = ObjectCount;
         srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -418,7 +419,6 @@ private:
         psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; 
         psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
         psoDesc.RasterizerState.DepthClipEnable = TRUE;
-        psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
         psoDesc.SampleMask = UINT_MAX;
         psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         psoDesc.NumRenderTargets = 1;
@@ -428,8 +428,31 @@ private:
         psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
         psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
         psoDesc.SampleDesc.Count = 1;
-        ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
 
+        // ---- OPAQUE PSO ----
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC opaqueDesc = psoDesc;
+        opaqueDesc.BlendState.RenderTarget[0].BlendEnable = FALSE;
+        opaqueDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        opaqueDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+        ThrowIfFailed(m_device->CreateGraphicsPipelineState(&opaqueDesc, IID_PPV_ARGS(&m_pipelineStateOpaque)));
+
+        // ---- TRANSPARENT PSO ----
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC transparentDesc = psoDesc;
+        D3D12_RENDER_TARGET_BLEND_DESC blendDesc = {};
+        blendDesc.BlendEnable = TRUE;
+        blendDesc.LogicOpEnable = FALSE;
+        blendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        blendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        blendDesc.BlendOp = D3D12_BLEND_OP_ADD;
+        blendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
+        blendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+        blendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+        blendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+        transparentDesc.BlendState.RenderTarget[0] = blendDesc;
+        transparentDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+        transparentDesc.DepthStencilState.DepthEnable = TRUE;
+        transparentDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+        ThrowIfFailed(m_device->CreateGraphicsPipelineState(&transparentDesc, IID_PPV_ARGS(&m_pipelineStateTransparent)));
 
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
         const UINT totalCbSize = cbSize * ObjectCount;
@@ -692,12 +715,14 @@ private:
         UpdateObjectCB(5, djDeskWorld, view, proj, djDeskColor, 1.0f, cbSize);
         // Speakers
         UpdateObjectCB(6, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        // Railing
+        UpdateObjectCB(7, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
     }
 
     void Render()
     {
         ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
-        ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), m_pipelineState.Get()));
+        ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), nullptr));
 
         D3D12_RESOURCE_BARRIER barrier = {};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -726,16 +751,33 @@ private:
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
         ID3D12DescriptorHeap* heaps[] = { m_srvHeap.Get() };
         m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
-
-        int i = 0;
+        
+        // Depth pass
+        int i = -1;
+        m_commandList->SetPipelineState(m_pipelineStateOpaque.Get());
         for (auto& obj : m_objects.GetObjects())
         {
+            ++i;
+            if (obj.isTransparent) continue;
             m_commandList->IASetVertexBuffers(0, 1, &obj.vbv);
             m_commandList->IASetIndexBuffer(&obj.ibv);
             m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize));
             m_commandList->SetGraphicsRootDescriptorTable(1, obj.srvGpu);
             m_commandList->DrawIndexedInstanced(obj.indexCount, 1, 0, 0, 0);
+        }
+        
+        // Transparency pass
+        i = -1;
+        m_commandList->SetPipelineState(m_pipelineStateTransparent.Get());
+        for (auto& obj : m_objects.GetObjects())
+        {
             ++i;
+            if (!obj.isTransparent) continue;
+            m_commandList->IASetVertexBuffers(0, 1, &obj.vbv);
+            m_commandList->IASetIndexBuffer(&obj.ibv);
+            m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize));
+            m_commandList->SetGraphicsRootDescriptorTable(1, obj.srvGpu);
+            m_commandList->DrawIndexedInstanced(obj.indexCount, 1, 0, 0, 0);
         }
 
 
