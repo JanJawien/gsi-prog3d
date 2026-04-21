@@ -466,6 +466,8 @@ private:
             LoadDDSTexture(path, i, obj); });
 
         m_objects.LoadAllObjects();
+
+        m_djDeskCenter = CalculateMeshCenter(m_objects.GetObjects()[5].mesh);
     }
 
     
