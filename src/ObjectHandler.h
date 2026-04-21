@@ -20,12 +20,15 @@ private:
         const wchar_t* texturePath,
         UINT index);
 
+    void CalculateMeshCenter(ObjectRenderData& obj);
+    bool IsCameraLookingAtObjectCenter(XMFLOAT3 camPos, XMVECTOR camFwd, ObjectRenderData obj, float maxDistance, float minDot);
+
 public:
     // Constructor
     ObjectHandler();
     void LoadAllObjects();
 
-    // Function injcectors
+    // Function injectors
     void SetMeshBufferFunc(std::function<void(ObjectRenderData&)> func) {
         m_createMeshBuffers = func; }
     void SetTextureFunc(std::function<void(const wchar_t*, UINT, ObjectRenderData&)> func) {
@@ -34,4 +37,6 @@ public:
     // Getters
     std::vector<ObjectRenderData>& GetObjects() { return objects; }
 
+    // Interaction
+    int GetClickedObjectIndex(XMFLOAT3 cameraPos, XMVECTOR cameraForward);
 };

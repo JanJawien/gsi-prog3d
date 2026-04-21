@@ -95,12 +95,61 @@ void ObjectHandler::LoadObject(const std::string& objPath,
     ObjectRenderData& obj = objects[index];
 
     obj.mesh = LoadGeometry(objPath);
+    CalculateMeshCenter(obj);
 
     if (m_createMeshBuffers)
         m_createMeshBuffers(obj);
 
     if (m_loadTexture)
         m_loadTexture(texturePath, index, obj);
+}
+
+void ObjectHandler::CalculateMeshCenter(ObjectRenderData& obj)
+{
+    if (obj.mesh.vertices.empty())
+        obj.meshCenter = XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+    float minX = obj.mesh.vertices[0].position.x;
+    float minY = obj.mesh.vertices[0].position.y;
+    float minZ = obj.mesh.vertices[0].position.z;
+
+    float maxX = obj.mesh.vertices[0].position.x;
+    float maxY = obj.mesh.vertices[0].position.y;
+    float maxZ = obj.mesh.vertices[0].position.z;
+
+    for (const auto& v : obj.mesh.vertices)
+    {
+        minX = min(minX, v.position.x);
+        minY = min(minY, v.position.y);
+        minZ = min(minZ, v.position.z);
+
+        maxX = max(maxX, v.position.x);
+        maxY = max(maxY, v.position.y);
+        maxZ = max(maxZ, v.position.z);
+    }
+
+    obj.meshCenter = XMFLOAT3(
+        (minX + maxX) * 0.5f,
+        (minY + maxY) * 0.5f,
+        (minZ + maxZ) * 0.5f);
+}
+
+bool ObjectHandler::IsCameraLookingAtObjectCenter(
+    XMFLOAT3 camPos, XMVECTOR camFwd, ObjectRenderData obj, float maxDistance, float minDot)
+{
+    XMVECTOR camPosV = XMLoadFloat3(&camPos);
+    XMVECTOR pointV = XMLoadFloat3(&(obj.meshCenter));
+    XMVECTOR toPoint = XMVectorSubtract(pointV, camPosV);
+
+    float distance = XMVectorGetX(XMVector3Length(toPoint));
+    if (distance > maxDistance)
+        return false;
+
+    XMVECTOR dirToPoint = XMVector3Normalize(toPoint);
+    XMVECTOR forward = XMVector3Normalize(camFwd);
+
+    float dot = XMVectorGetX(XMVector3Dot(forward, dirToPoint));
+    return dot >= minDot;
 }
 
 void ObjectHandler::LoadAllObjects() {
@@ -121,5 +170,16 @@ ObjectHandler::ObjectHandler()
 
 }
 
-// ===== getters =====
+// ===== interaction =====
 
+int ObjectHandler::GetClickedObjectIndex(XMFLOAT3 cameraPos, XMVECTOR cameraForward) {
+    int i = 0;
+    for (auto& obj : objects)
+    {
+        if (IsCameraLookingAtObjectCenter(cameraPos, cameraForward, obj, 6.0f, 0.80f)) {
+            return i;
+        }
+        ++i;
+    }
+    return -1;
+}

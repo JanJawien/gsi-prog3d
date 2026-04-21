@@ -72,6 +72,9 @@ struct ObjectRenderData
     ComPtr<ID3D12Resource> textureUpload;
 
     D3D12_GPU_DESCRIPTOR_HANDLE srvGpu{};
+
+    XMFLOAT3 meshCenter;
+    bool isTransparent;
 };
 
 struct DDS_PIXELFORMAT

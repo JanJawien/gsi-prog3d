@@ -466,8 +466,9 @@ private:
             LoadDDSTexture(path, i, obj); });
 
         m_objects.LoadAllObjects();
-
-        m_djDeskCenter = CalculateMeshCenter(m_objects.GetObjects()[5].mesh);
+        
+        // temp just for desk spin
+        m_djDeskCenter = m_objects.GetObjects()[5].meshCenter;
     }
 
     
@@ -789,13 +790,21 @@ private:
             break;
 
         case 'E':
-            if (IsLookingAtPoint(m_djDeskCenter, 6.0f, 0.80f))
-                m_djDeskGlowOn = !m_djDeskGlowOn;
-            break;
-        case 'R':
-            if (IsLookingAtPoint(m_djDeskCenter, 6.0f, 0.80f))
+            switch (m_objects.GetClickedObjectIndex(m_camera.GetPosition(), m_camera.GetForward())) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 6:
+                break;
+            case 5:
                 m_djDeskRotateOn = !m_djDeskRotateOn;
+                m_djDeskGlowOn = !m_djDeskGlowOn;
+                break;
+            }
             break;
+
         case '1':
             m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 0.0f, 0.0f);
             break;
@@ -846,55 +855,7 @@ private:
         memcpy(m_cbvDataBegin + index * cbSize, &cb, sizeof(cb));
     }
 
-    XMFLOAT3 CalculateMeshCenter(const Mesh& mesh)
-    {
-        if (mesh.vertices.empty())
-            return XMFLOAT3(0.0f, 0.0f, 0.0f);
 
-        float minX = mesh.vertices[0].position.x;
-        float minY = mesh.vertices[0].position.y;
-        float minZ = mesh.vertices[0].position.z;
-
-        float maxX = mesh.vertices[0].position.x;
-        float maxY = mesh.vertices[0].position.y;
-        float maxZ = mesh.vertices[0].position.z;
-
-        for (const auto& v : mesh.vertices)
-        {
-            minX = min(minX, v.position.x);
-            minY = min(minY, v.position.y);
-            minZ = min(minZ, v.position.z);
-
-            maxX = max(maxX, v.position.x);
-            maxY = max(maxY, v.position.y);
-            maxZ = max(maxZ, v.position.z);
-        }
-
-        return XMFLOAT3(
-            (minX + maxX) * 0.5f,
-            (minY + maxY) * 0.5f,
-            (minZ + maxZ) * 0.5f
-        );
-    }
-
-    bool IsLookingAtPoint(const XMFLOAT3& point, float maxDistance, float minDot)
-    {
-        XMFLOAT3 camPos = m_camera.GetPosition();
-
-        XMVECTOR camPosV = XMLoadFloat3(&camPos);
-        XMVECTOR pointV = XMLoadFloat3(&point);
-        XMVECTOR toPoint = XMVectorSubtract(pointV, camPosV);
-
-        float distance = XMVectorGetX(XMVector3Length(toPoint));
-        if (distance > maxDistance)
-            return false;
-
-        XMVECTOR dirToPoint = XMVector3Normalize(toPoint);
-        XMVECTOR forward = XMVector3Normalize(m_camera.GetForward());
-
-        float dot = XMVectorGetX(XMVector3Dot(forward, dirToPoint));
-        return dot >= minDot;
-    }
 
     // ----------------------------------------------------------------------------------
     // Utils
