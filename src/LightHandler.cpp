@@ -111,15 +111,100 @@ void LightHandler::ToggleSceneLightBlur() {
 
 void LightHandler::AddSceneLight() {
     SceneLightDistribute(lightsScene.size() + 1);
+    ChangeLightEffect(lightEffectIdx);
 }
 
 void LightHandler::RemoveSceneLight() {
     SceneLightDistribute(lightsScene.size() - 1);
+    ChangeLightEffect(lightEffectIdx);
 }
 
 void LightHandler::_TEMP_SetSceneLightBaseColor(float r, float g, float b) {
     sceneLightBaseColor = { r, g, b };
     for (auto& l : lightsScene) { l.color = sceneLightBaseColor; }
+}
+
+void LightHandler::ChangeLightEffect(int effectIndex) {
+    lightEffectIdx = effectIndex;
+    lightEffectStartTime = -1.0;
+}
+
+void LightHandler::UpdateLights(float totalTime) {
+    if (lightEffectStartTime == -1.0) {
+        lightEffectStartTime = totalTime;
+    }
+    float effectTime = totalTime - lightEffectStartTime;
+
+    switch (lightEffectIdx) {
+    case 0:
+        if (effectTime == 0.0) {
+            for (auto& l : lightsScene) {
+                l.color = { 1.0f, 1.0f, 1.0f };
+                l.direction = { 0.0f, -1.0f, 0.0f };
+                l.isEnabled = true;
+            }
+        }
+        else {}
+        break;
+
+
+    case 1:
+        if (effectTime == 0.0) {
+            for (auto& l : lightsScene) {
+                l.color = { 1.0f, 0.0f, 0.0f };
+                l.direction = { 0.0f, -1.0f, 0.0f };
+                l.isEnabled = true;
+            }
+        }
+        else {
+            const float huePeriod = 10.0f;
+            const float tiltPeriod = 5.0f;
+
+            float hueT = fmod(effectTime, huePeriod) / huePeriod;
+
+            float tiltT = sin((effectTime / tiltPeriod) * 2.0f * 3.14159265f) * 0.5f + 0.5f;
+
+            // angle from straight down (-90°) to -30°
+            float angle = -90.0f + (-30.0f - -90.0f) * tiltT;
+            float rad = angle * 3.14159265f / 180.0f;
+
+            // direction (tilted toward +X axis)
+            XMFLOAT3 tiltedDirF(
+                sinf(rad),
+                -cosf(rad),
+                0.0f
+            );
+
+            // normalize direction
+            XMVECTOR dir = XMVector3Normalize(XMLoadFloat3(&tiltedDirF));
+            XMFLOAT3 tiltedDir;
+            XMStoreFloat3(&tiltedDir, dir);
+
+            // HSV → RGB
+            auto HueToRGB = [](float h)
+                {
+                    float r = fabs(h * 6.0f - 3.0f) - 1.0f;
+                    float g = 2.0f - fabs(h * 6.0f - 2.0f);
+                    float b = 2.0f - fabs(h * 6.0f - 4.0f);
+
+                    return XMFLOAT3(
+                        std::clamp(r, 0.0f, 1.0f),
+                        std::clamp(g, 0.0f, 1.0f),
+                        std::clamp(b, 0.0f, 1.0f)
+                    );
+                };
+
+            XMFLOAT3 color = HueToRGB(hueT);
+
+            for (auto& l : lightsScene)
+            {
+                l.color = color;
+                l.direction = tiltedDir;
+                l.isEnabled = true;
+            }
+        }
+        break;
+    }
 }
 
 

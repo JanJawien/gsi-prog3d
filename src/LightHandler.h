@@ -14,6 +14,10 @@ private:
     bool isSceneLightBlurOn = true;
     XMFLOAT3 sceneLightBaseColor = {1.0, 1.0, 1.0};
 
+    int lightEffectIdx = 0;
+    float lightEffectStartTime = -1.0;
+
+
     void SceneLightDistribute(int targetCount);
     float GetSpotPower();
     void InitLights();
@@ -33,4 +37,6 @@ public:
     void AddSceneLight();
     void RemoveSceneLight();
     void _TEMP_SetSceneLightBaseColor(float r, float g, float b);
+    void ChangeLightEffect(int effectIndex);
+    void UpdateLights(float totalTime);
 };

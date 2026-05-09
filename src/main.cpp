@@ -46,9 +46,10 @@ public:
     int Run()
     {
         MSG msg = {};
-        LARGE_INTEGER frequency{}, prev{}, now{};
+        LARGE_INTEGER frequency{}, prev{}, now{}, start{};
         QueryPerformanceFrequency(&frequency);
         QueryPerformanceCounter(&prev);
+        start = prev;
 
         while (msg.message != WM_QUIT)
         {
@@ -62,8 +63,9 @@ public:
                 QueryPerformanceCounter(&now);
                 float deltaTime = static_cast<float>(now.QuadPart - prev.QuadPart) / static_cast<float>(frequency.QuadPart);
                 prev = now;
+                float totalTime = static_cast<float>(now.QuadPart - start.QuadPart) / static_cast<float>(frequency.QuadPart);
 
-                Update(deltaTime);
+                Update(deltaTime, totalTime);
                 Render();
             }
         }
@@ -675,11 +677,13 @@ private:
     // ----------------------------------------------------------------------------------
     // Render Loop
 
-    void Update(float deltaTime)
+    void Update(float deltaTime, float totalTime)
     {
         // Move camera
         m_camera.Update(deltaTime, m_hwnd);
         XMMATRIX view = m_camera.GetViewMatrix();
+
+        m_lighting.UpdateLights(totalTime);
 
         if (m_djDeskRotateOn)
             m_djDeskAngle += deltaTime;
@@ -848,25 +852,10 @@ private:
             break;
 
         case '1':
-            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 0.0f, 0.0f);
-            break;
-        case '2':
-            m_lighting._TEMP_SetSceneLightBaseColor(0.0f, 1.0f, 0.0f);
-            break;
-        case '3':
-            m_lighting._TEMP_SetSceneLightBaseColor(0.0f, 0.0f, 1.0f);
-            break;
-        case '4':
-            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 1.0f, 0.0f);
-            break;
-        case '5':
-            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 0.0f, 1.0f);
-            break;
-        case '6':
-            m_lighting._TEMP_SetSceneLightBaseColor(0.0f, 1.0f, 1.0f);
+            m_lighting.ChangeLightEffect(1);
             break;
         case '0':
-            m_lighting._TEMP_SetSceneLightBaseColor(1.0f, 1.0f, 1.0f);
+            m_lighting.ChangeLightEffect(0);
             break;
         }
     }
