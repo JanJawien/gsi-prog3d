@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 8;
+    static const UINT ObjectCount = 11;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -683,7 +683,7 @@ private:
         m_camera.Update(deltaTime, m_hwnd);
         XMMATRIX view = m_camera.GetViewMatrix();
 
-        m_lighting.UpdateLights(totalTime);
+        m_lighting.UpdateSpotlights(totalTime);
 
         if (m_djDeskRotateOn)
             m_djDeskAngle += deltaTime;
@@ -695,7 +695,7 @@ private:
             200.0f);
 
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u; 
-
+        
         // Room
         UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.60f, 0.60f, 0.60f, 1.0f), 6.0f, cbSize);
 		// Scene base
@@ -721,6 +721,13 @@ private:
         UpdateObjectCB(6, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Railing
         UpdateObjectCB(7, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(8, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(9, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // lightCone
+        XMMATRIX coneWorld =
+            m_lighting.GetSpotlightRot(0) *
+            m_lighting.GetSpotlightPos(0);
+        UpdateObjectCB(10, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
     }
 
     void Render()
@@ -881,7 +888,8 @@ private:
         m_lighting.UpdateLights(cb.lights, cb.lightCount);
         cb.cameraPosition = m_camera.GetPosition();
         cb.baseColor = baseColor;
-        cb.uvScale = uvScale; 
+        cb.uvScale = uvScale;
+        cb.isLightCone = m_objects.GetObjects()[index].isLightCone;
 
         memcpy(m_cbvDataBegin + index * cbSize, &cb, sizeof(cb));
     }

@@ -28,6 +28,8 @@ public:
 
     // Getters
     int GetLightCount();
+    XMMATRIX GetSpotlightPos(int idx);
+    XMMATRIX GetSpotlightRot(int idx);
     void UpdateLights(Light outLights[MAX_LIGHTS], int& outCount);
 
     // Lighting effects
@@ -36,7 +38,6 @@ public:
     void ToggleSceneLightBlur();
     void AddSceneLight();
     void RemoveSceneLight();
-    void _TEMP_SetSceneLightBaseColor(float r, float g, float b);
     void ChangeLightEffect(int effectIndex);
-    void UpdateLights(float totalTime);
+    void UpdateSpotlights(float totalTime);
 };

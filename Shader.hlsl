@@ -21,7 +21,8 @@ cbuffer ObjectCB : register(b0)
 
     Light lights[16];
     int lightCount;
-    float3 padding2;
+    int isLightCone;
+    float2 padding;
 };
 
 // Dodajemy obsługę tekstury
@@ -68,6 +69,10 @@ float3 ComputeSpotlightCone(
 
     // cone radius increases with distance
     float coneRadius = axialDist * 0.35f;
+
+    // Expand cone influence for light cone geometry
+    if (isLightCone != 0)
+        coneRadius *= 2.5f;
 
     // soft cone edge
     float coneMask =
@@ -130,6 +135,8 @@ float4 PSMain(PSInput input) : SV_TARGET
     {
         Light L = lights[i];
         if (L.isEnabled == 0)
+            continue;
+        if (isLightCone != 0 && L.type == 0)
             continue;
 
         float3 toLight = L.position - input.worldPos;

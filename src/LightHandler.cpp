@@ -66,6 +66,8 @@ float LightHandler::GetSpotPower() { return isSceneLightBlurOn ? 20.0f : 500.0f;
 
 
 
+
+
 // ===== public =====
 // ===== constructors =====
 
@@ -77,6 +79,54 @@ LightHandler::LightHandler()
 // ===== getters =====
 
 int LightHandler::GetLightCount() { return min(lightsScene.size()+lightsOther.size(), MAX_LIGHTS); }
+
+XMMATRIX LightHandler::GetSpotlightPos(int idx)
+{
+    return XMMatrixTranslation(
+        lightsScene[idx].position.x,
+        lightsScene[idx].position.y,
+        lightsScene[idx].position.z
+    );
+}
+
+XMMATRIX LightHandler::GetSpotlightRot(int idx)
+{
+    // Mesh default forward/down direction
+    // (no rotation when spotlight points downward)
+    XMVECTOR defaultDir =
+        XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+
+    // Spotlight direction
+    XMVECTOR targetDir =
+        XMVector3Normalize(
+            XMLoadFloat3(&lightsScene[idx].direction));
+
+    float dot =
+        XMVectorGetX(
+            XMVector3Dot(defaultDir, targetDir));
+
+    dot = std::clamp(dot, -1.0f, 1.0f);
+
+    // Same direction -> identity
+    if (fabs(dot - 1.0f) < 0.0001f)
+    {
+        return XMMatrixIdentity();
+    }
+
+    // Opposite direction -> 180 deg rotation
+    if (fabs(dot + 1.0f) < 0.0001f)
+    {
+        return XMMatrixRotationX(XM_PI);
+    }
+
+    XMVECTOR axis =
+        XMVector3Normalize(
+            XMVector3Cross(defaultDir, targetDir));
+
+    float angle = acosf(dot);
+
+    return XMMatrixRotationAxis(axis, angle);
+}
 
 void LightHandler::UpdateLights(Light outLights[MAX_LIGHTS], int& outCount) {
     size_t i = 0;
@@ -119,17 +169,12 @@ void LightHandler::RemoveSceneLight() {
     ChangeLightEffect(lightEffectIdx);
 }
 
-void LightHandler::_TEMP_SetSceneLightBaseColor(float r, float g, float b) {
-    sceneLightBaseColor = { r, g, b };
-    for (auto& l : lightsScene) { l.color = sceneLightBaseColor; }
-}
-
 void LightHandler::ChangeLightEffect(int effectIndex) {
     lightEffectIdx = effectIndex;
     lightEffectStartTime = -1.0;
 }
 
-void LightHandler::UpdateLights(float totalTime) {
+void LightHandler::UpdateSpotlights(float totalTime) {
     if (lightEffectStartTime == -1.0) {
         lightEffectStartTime = totalTime;
     }

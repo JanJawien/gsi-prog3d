@@ -45,7 +45,8 @@ struct alignas(256) ObjectConstants
 
     Light lights[MAX_LIGHTS];
     int lightCount;
-    XMFLOAT3 padding;
+    int isLightCone;
+    XMFLOAT2 padding;
 };
 
 struct Mesh
@@ -75,6 +76,7 @@ struct ObjectRenderData
 
     XMFLOAT3 meshCenter;
     bool isTransparent;
+    bool isLightCone;
 };
 
 struct DDS_PIXELFORMAT
