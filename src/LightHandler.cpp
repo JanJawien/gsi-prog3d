@@ -82,6 +82,9 @@ int LightHandler::GetLightCount() { return min(lightsScene.size()+lightsOther.si
 
 XMMATRIX LightHandler::GetSpotlightPos(int idx)
 {
+    if (idx >= (int)lightsScene.size())
+        return XMMatrixTranslation(0.0f, -100.0f, 0.0f);
+
     return XMMatrixTranslation(
         lightsScene[idx].position.x,
         lightsScene[idx].position.y,
@@ -91,6 +94,9 @@ XMMATRIX LightHandler::GetSpotlightPos(int idx)
 
 XMMATRIX LightHandler::GetSpotlightRot(int idx)
 {
+    if (idx >= (int)lightsScene.size())
+        return XMMatrixIdentity();
+
     // Mesh default forward/down direction
     // (no rotation when spotlight points downward)
     XMVECTOR defaultDir =
@@ -207,10 +213,10 @@ void LightHandler::UpdateSpotlights(float totalTime) {
 
             float hueT = fmod(effectTime, huePeriod) / huePeriod;
 
-            float tiltT = sin((effectTime / tiltPeriod) * 2.0f * 3.14159265f) * 0.5f + 0.5f;
+            float tiltT = cos((effectTime / tiltPeriod) * 2.0f * 3.14159265f) * 0.5f + 0.5f;
 
             // angle from straight down (-90°) to -30°
-            float angle = -90.0f + (-30.0f - -90.0f) * tiltT;
+            float angle = -60.0f + (0.0f - -60.0f) * tiltT;
             float rad = angle * 3.14159265f / 180.0f;
 
             // direction (tilted toward +X axis)

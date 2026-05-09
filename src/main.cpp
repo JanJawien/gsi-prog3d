@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 11;
+    static const UINT ObjectCount = 19;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -724,10 +724,12 @@ private:
         UpdateObjectCB(8, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         UpdateObjectCB(9, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         // lightCone
-        XMMATRIX coneWorld =
-            m_lighting.GetSpotlightRot(0) *
-            m_lighting.GetSpotlightPos(0);
-        UpdateObjectCB(10, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        for (int i = 0; i < MAX_LIGHTS_SCENE; ++i) {
+            XMMATRIX coneWorld =
+                m_lighting.GetSpotlightRot(i) *
+                m_lighting.GetSpotlightPos(i);
+            UpdateObjectCB(10+i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        }
     }
 
     void Render()

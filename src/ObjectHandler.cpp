@@ -167,6 +167,14 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/lights-railing-bottom.obj", L"Assets/railing.dds", 8, true);
     LoadObject("Assets/lights-railing-front.obj", L"Assets/railing.dds", 9, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 10, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 11, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 12, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 13, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 14, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 15, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 16, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 17, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 18, true, true);
 }
 
 // ===== public =====
