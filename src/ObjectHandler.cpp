@@ -218,7 +218,8 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/bar.obj", L"Assets/wood.dds", 31);
     LoadObject("Assets/door.obj", L"Assets/wood.dds", 32);
     LoadObject("Assets/sofa.obj", L"Assets/fabric.dds", 33);
-    LoadObject("Assets/beer.obj", L"Assets/fabric.dds", 34);
+    LoadObject("Assets/beer1.obj", L"Assets/fabric.dds", 34);
+    LoadObject("Assets/beer2.obj", L"Assets/fabric.dds", 35);
 }
 
 // ===== public =====

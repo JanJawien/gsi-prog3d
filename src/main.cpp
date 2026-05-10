@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 35;
+    static const UINT ObjectCount = 36;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -756,8 +756,9 @@ private:
         UpdateObjectCB(32, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.5f, cbSize);
         // Sofa
         UpdateObjectCB(33, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
-        // Beer
+        // Beer bottles
         UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        UpdateObjectCB(35, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
     }
 
     void Render()
