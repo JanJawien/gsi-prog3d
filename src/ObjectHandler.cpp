@@ -23,13 +23,12 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
 
     std::ifstream file(filename);
     if (!file.is_open())
-        throw std::runtime_error("Failed to open OBJ file.");
+        throw std::runtime_error("Failed to open OBJ file: " + filename);
 
-    std::vector<XMFLOAT3> temp_positions;
-    std::vector<XMFLOAT2> temp_uvs;
+    std::vector<DirectX::XMFLOAT3> temp_positions;
+    std::vector<DirectX::XMFLOAT2> temp_uvs;
 
     std::string line;
-
     while (std::getline(file, line))
     {
         std::stringstream ss(line);
@@ -38,46 +37,73 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
 
         if (prefix == "v")
         {
-            XMFLOAT3 pos;
+            DirectX::XMFLOAT3 pos;
             ss >> pos.x >> pos.y >> pos.z;
             pos.x += offsetX;
             pos.y += offsetY;
             pos.z += offsetZ;
-
             temp_positions.push_back(pos);
         }
         else if (prefix == "vt")
         {
-            XMFLOAT2 uv;
+            DirectX::XMFLOAT2 uv;
             ss >> uv.x >> uv.y;
-            uv.y = 1.0f - uv.y;
+            uv.y = 1.0f - uv.y; 
             temp_uvs.push_back(uv);
         }
         else if (prefix == "f")
         {
-            for (int i = 0; i < 3; i++)
+            std::vector<Vertex> faceVertices;
+            std::string vertexStr;
+
+            while (ss >> vertexStr)
             {
-                std::string vertexData;
-                ss >> vertexData;
+                int vIdx = 0, tIdx = 0, nIdx = 0;
 
-                std::replace(vertexData.begin(), vertexData.end(), '/', ' ');
+                size_t slash1 = vertexStr.find('/');
+                size_t slash2 = vertexStr.find('/', slash1 + 1);
 
-                std::stringstream vss(vertexData);
-
-                int vIdx = 0, tIdx = 0;
-                vss >> vIdx >> tIdx;
-
-                if (vIdx <= 0 || vIdx > temp_positions.size())
-                    throw std::runtime_error("Invalid vertex index in OBJ.");
-
-                if (tIdx <= 0 || tIdx > temp_uvs.size())
-                    throw std::runtime_error("Invalid UV index in OBJ.");
+                if (slash1 == std::string::npos)
+                {
+                    vIdx = std::stoi(vertexStr);
+                }
+                else
+                {
+                    vIdx = std::stoi(vertexStr.substr(0, slash1));
+                    if (slash2 == std::string::npos)
+                    {
+                        tIdx = std::stoi(vertexStr.substr(slash1 + 1));
+                    }
+                    else
+                    {
+                        if (slash2 > slash1 + 1)
+                        {
+                            tIdx = std::stoi(vertexStr.substr(slash1 + 1, slash2 - slash1 - 1));
+                        }
+                        nIdx = std::stoi(vertexStr.substr(slash2 + 1));
+                    }
+                }
 
                 Vertex v;
-                v.position = temp_positions[vIdx - 1];
-                v.uv = temp_uvs[tIdx - 1];
+                if (vIdx > 0) v.position = temp_positions[vIdx - 1];
 
-                mesh.vertices.push_back(v);
+                if (tIdx > 0 && tIdx <= (int)temp_uvs.size())
+                    v.uv = temp_uvs[tIdx - 1];
+                else
+                    v.uv = { 0.0f, 0.0f };
+
+                faceVertices.push_back(v);
+            }
+
+            for (size_t i = 1; i < faceVertices.size() - 1; ++i)
+            {
+                mesh.vertices.push_back(faceVertices[0]);
+                mesh.indices.push_back(static_cast<uint16_t>(mesh.indices.size()));
+
+                mesh.vertices.push_back(faceVertices[i]);
+                mesh.indices.push_back(static_cast<uint16_t>(mesh.indices.size()));
+
+                mesh.vertices.push_back(faceVertices[i + 1]);
                 mesh.indices.push_back(static_cast<uint16_t>(mesh.indices.size()));
             }
         }
