@@ -157,11 +157,11 @@ bool ObjectHandler::IsCameraLookingAtObjectCenter(
 
 void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/room.obj", L"Assets/bricks.dds", 0);
-    LoadObject("Assets/scene-base.obj", L"Assets/energy.dds", 1);
+    LoadObject("Assets/scene-base.obj", L"Assets/wood.dds", 1);
     LoadObject("Assets/tables-and-chairs.obj", L"Assets/wood.dds", 2);
     LoadObject("Assets/stairs.obj", L"Assets/wood.dds", 3);
     LoadObject("Assets/dj-setup.obj", L"Assets/black.dds", 4);
-    LoadObject("Assets/dj-desk.obj", L"Assets/crate.dds", 5);
+    LoadObject("Assets/dj-desk.obj", L"Assets/wood.dds", 5);
     LoadObject("Assets/speaker-right.obj", L"Assets/black.dds", 6);
     LoadObject("Assets/speaker-right-back.obj", L"Assets/black.dds", 7);
     LoadObject("Assets/speaker-left.obj", L"Assets/black.dds", 8);
@@ -169,6 +169,7 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/lights-railing-back.obj", L"Assets/railing.dds", 10, true);
     LoadObject("Assets/lights-railing-bottom.obj", L"Assets/railing.dds", 11, true);
     LoadObject("Assets/lights-railing-front.obj", L"Assets/railing.dds", 12, true);
+	//Do not change this order, the light cones are expected to be in indices 13-21 and the lamp ceilings in 22-30
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 13, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 14, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 15, true, true);
@@ -187,6 +188,11 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 28);
     LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 29);
     LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 30);
+
+    LoadObject("Assets/bar.obj", L"Assets/wood.dds", 31);
+    LoadObject("Assets/door.obj", L"Assets/wood.dds", 32);
+    LoadObject("Assets/sofa.obj", L"Assets/fabric.dds", 33);
+    LoadObject("Assets/beer.obj", L"Assets/fabric.dds", 34);
 }
 
 // ===== public =====

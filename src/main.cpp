@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 31;
+    static const UINT ObjectCount = 35;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -574,13 +574,21 @@ private:
 
         DDS_HEADER header = {};
         file.read(reinterpret_cast<char*>(&header), sizeof(header));
-        if (header.ddspf.rgbBitCount != 32 ||
-            header.ddspf.rBitMask != 0x00ff0000 ||
-            header.ddspf.gBitMask != 0x0000ff00 ||
-            header.ddspf.bBitMask != 0x000000ff ||
-            header.ddspf.aBitMask != 0xff000000)
+
+        if (header.ddspf.rgbBitCount != 32)
         {
-            throw std::runtime_error("Ten przyklad obsluguje tylko DDS RGBA8.");
+            throw std::runtime_error("Ten przyklad obsluguje tylko 32-bitowe pliki DDS.");
+        }
+
+        DXGI_FORMAT textureFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+        if (header.ddspf.rBitMask == 0x00ff0000)
+        {
+            textureFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
+        }
+        else if (header.ddspf.rBitMask == 0x000000ff)
+        {
+            textureFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         }
 
         std::vector<uint8_t> pixelData(header.width * header.height * 4);
@@ -592,7 +600,7 @@ private:
         texDesc.Height = header.height;
         texDesc.DepthOrArraySize = 1;
         texDesc.MipLevels = 1;
-        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.Format = textureFormat; 
         texDesc.SampleDesc.Count = 1;
         texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
@@ -627,8 +635,8 @@ private:
         for (UINT y = 0; y < numRows; ++y)
         {
             memcpy(mapped + footprint.Offset + y * footprint.Footprint.RowPitch,
-                   pixelData.data() + y * header.width * 4,
-                   header.width * 4);
+                pixelData.data() + y * header.width * 4,
+                header.width * 4);
         }
         obj.textureUpload->Unmap(0, nullptr);
 
@@ -662,7 +670,7 @@ private:
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.Format = textureFormat; 
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
 
@@ -699,11 +707,11 @@ private:
         // Room
         UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.60f, 0.60f, 0.60f, 1.0f), 6.0f, cbSize);
 		// Scene base
-        UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(0.65f, 0.20f, 0.10f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 7.0f, cbSize);
         // Tables and chairs
-        UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(0.80f, 0.55f, 0.35f, 1.0f), 0.2f, cbSize);
+        UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.2f, cbSize);
 		// Stairs
-        UpdateObjectCB(3, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 0.7f, 0.5f, 1.0f), 0.1f, cbSize);
+        UpdateObjectCB(3, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.1f, cbSize);
         // DJ setup
         UpdateObjectCB(4, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // DJ desk
@@ -741,6 +749,15 @@ private:
             UpdateObjectCB(13 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
             UpdateObjectCB(22 + i, lampWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.2f, cbSize);
         }
+
+        // Bar
+        UpdateObjectCB(31, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 1.0f, cbSize);
+        // Door
+        UpdateObjectCB(32, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.5f, cbSize);
+        // Sofa
+        UpdateObjectCB(33, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        // Beer
+        UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
     }
 
     void Render()
