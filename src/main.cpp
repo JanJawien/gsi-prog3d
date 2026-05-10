@@ -728,17 +728,17 @@ private:
         UpdateObjectCB(12, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         // lightCone
         for (int i = 0; i < MAX_LIGHTS_SCENE; ++i) {
-            XMMATRIX coneWorld =
-                m_lighting.GetSpotlightRot(i) *
-                m_lighting.GetSpotlightPos(i);
-            UpdateObjectCB(13+i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
 
-            XMMATRIX lampWorld =
-                XMMatrixScaling(2.0f, 2.0f, 2.0f) *
-                m_lighting.GetSpotlightRot(i) *
-                XMMatrixTranslation(0.0f, -0.3f, -0.11f) * //offset
-                m_lighting.GetSpotlightPos(i);
+            float lampDownOffset = -0.3f; 
+			float lampRightOffset = -0.11f;
+			float lampForwardOffset = 0.11f;
+            XMMATRIX commonPos = m_lighting.GetSpotlightPos(i);
+            XMMATRIX commonRot = m_lighting.GetSpotlightRot(i);
 
+            XMMATRIX coneWorld = commonRot * commonPos;
+            XMMATRIX lampWorld = XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(lampForwardOffset, lampDownOffset, lampRightOffset) * commonRot * commonPos;
+
+            UpdateObjectCB(13 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
             UpdateObjectCB(22 + i, lampWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.2f, cbSize);
         }
     }

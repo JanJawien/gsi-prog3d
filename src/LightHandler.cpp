@@ -22,17 +22,12 @@ void LightHandler::SceneLightDistribute(int targetCount){
         float t = (float)i / (count - 1);
         float z = zMin + t * (zMax - zMin);
 
-        if (i + 1 == count) {
-            lightsScene[i] = {
-                { x, y, z }, 4.0f,
-                sceneLightBaseColor, 20.0f,
-                { 0.0f, -1.0f, 0.0f }, GetSpotPower(),
-                1, 1, {}
-            };
-        }
-        else {
-            lightsScene[i].position.z = z;
-        }
+        lightsScene[i] = {
+             { x, y, z }, 4.0f,
+             sceneLightBaseColor, 20.0f,
+             { 0.0f, -1.0f, 0.0f }, GetSpotPower(),
+             1, 1, {}
+        };
     }
 }
 
