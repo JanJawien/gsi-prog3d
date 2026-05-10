@@ -19,9 +19,9 @@ private:
     int lightEffectBPM = 120;
     int lightEffectPeriod = 0;
     float lightEffectStartTime = -1.0;
-    std::function<float(float, float)> angVFunc;
-    std::function<float(float, float)> angHFunc;
-    std::function<XMFLOAT3(float, float)> colorFunc;
+    std::function<float(float, float, int)> angVFunc;
+    std::function<float(float, float, int)> angHFunc;
+    std::function<XMFLOAT3(float, float, int)> colorFunc;
 
     void SceneLightDistribute(int targetCount);
     float GetSpotPower();

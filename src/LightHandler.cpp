@@ -200,9 +200,9 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
             l.isEnabled = true;
         }
         lightEffectPeriod = 16;
-        angVFunc = [](float z, float t) { return 60.0f * (-cos((t + abs(z / 10)) * XM_2PI) / 2 + 0.5f); };
-        angHFunc = [](float z, float t) { return 45.0f * z / 3;};
-        colorFunc = [](float z, float t) {
+        angVFunc = [](float z, float t, int i) { return 60.0f * (-cos((t + abs(z / 10)) * XM_2PI) / 2 + 0.5f); };
+        angHFunc = [](float z, float t, int i) { return 45.0f * z / 3;};
+        colorFunc = [](float z, float t, int i) {
                 float r = fabs(t * 6.0f - 3.0f) - 1.0f;
                 float g = 2.0f - fabs(t * 6.0f - 2.0f);
                 float b = 2.0f - fabs(t * 6.0f - 4.0f);
@@ -224,8 +224,8 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
         lightEffectPeriod = 1;
         angVFunc = NULL;
         angHFunc = NULL;
-        colorFunc = [](float z, float t) {
-            if((t>0.5) ^ ((int)z%2==0)) return XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+        colorFunc = [](float z, float t, int i) {
+            if((t>0.5) ^ (i%2==0)) return XMFLOAT3{ 1.0f, 1.0f, 1.0f };
             else return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
             };
         break;
@@ -248,17 +248,19 @@ void LightHandler::UpdateSpotlights(float totalTime) {
     float effectTime = totalTime - lightEffectStartTime;
     double fTime = fmod(effectTime / (60.0 / lightEffectBPM * lightEffectPeriod), 1);
 
+    int lightIdx = 0;
     for (auto& l : lightsScene)
     {
         if (colorFunc != NULL) 
-            l.color = colorFunc(l.position.z, fTime);
+            l.color = colorFunc(l.position.z, fTime, lightIdx);
         if (angVFunc != NULL && angHFunc != NULL) {
             XMFLOAT3 tiltedDir;
-            float angV = angVFunc(l.position.z, fTime);
-            float angH = angHFunc(l.position.z, fTime);
+            float angV = angVFunc(l.position.z, fTime, lightIdx);
+            float angH = angHFunc(l.position.z, fTime, lightIdx);
             AnglesToRotVector(&tiltedDir, angV, angH);
             l.direction = tiltedDir;
         }
+        ++lightIdx;
     }
 }
 
