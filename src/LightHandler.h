@@ -44,5 +44,7 @@ public:
     void AddSceneLight();
     void RemoveSceneLight();
     void ChangeLightEffect(int effectIndex);
+    void ChangeLightEffectNext();
+    void ChangeLightEffectPrev();
     void UpdateSpotlights(float totalTime);
 };

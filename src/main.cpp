@@ -860,8 +860,18 @@ private:
             }
             break;
 
+        case VK_OEM_COMMA:  // ,<
+            m_lighting.ChangeLightEffectPrev();
+            break;
+        case VK_OEM_PERIOD: // .>
+            m_lighting.ChangeLightEffectNext();
+            break;
+
         case '1':
             m_lighting.ChangeLightEffect(1);
+            break;
+        case '2':
+            m_lighting.ChangeLightEffect(2);
             break;
         case '0':
             m_lighting.ChangeLightEffect(0);

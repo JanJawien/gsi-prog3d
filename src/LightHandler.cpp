@@ -171,11 +171,16 @@ void LightHandler::RemoveSceneLight() {
     ChangeLightEffect(lightEffectIdx);
 }
 
-void LightHandler::ChangeLightEffect(int effectIndex) {
-    lightEffectIdx = effectIndex;
-    lightEffectStartTime = -1.0;
 
-    switch (lightEffectIdx) {
+void LightHandler::ChangeLightEffectNext(){
+    ChangeLightEffect(lightEffectIdx + 1);
+}
+void LightHandler::ChangeLightEffectPrev(){
+    ChangeLightEffect(lightEffectIdx - 1);
+}
+
+void LightHandler::ChangeLightEffect(int effectIndex) {
+    switch (effectIndex) {
     case 0: // White, static
         for (auto& l : lightsScene) {
             l.color = { 1.0f, 1.0f, 1.0f };
@@ -224,7 +229,13 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
             else return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
             };
         break;
+
+    default: // Out of range, return
+        return;
     }
+
+    lightEffectIdx = effectIndex;
+    lightEffectStartTime = -1.0;
 }
 
 void LightHandler::UpdateSpotlights(float totalTime) {
