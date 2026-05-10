@@ -2,6 +2,7 @@
 
 #include <string>
 #include "StructDef.h"
+#include <functional>
 
 const int MIN_LIGHTS_SCENE = 2;
 const int MAX_LIGHTS_SCENE = 9;
@@ -15,8 +16,12 @@ private:
     XMFLOAT3 sceneLightBaseColor = {1.0, 1.0, 1.0};
 
     int lightEffectIdx = 0;
+    int lightEffectBPM = 120;
+    int lightEffectPeriod = 0;
     float lightEffectStartTime = -1.0;
-
+    std::function<float(float, float)> angVFunc;
+    std::function<float(float, float)> angHFunc;
+    std::function<XMFLOAT3(float, float)> colorFunc;
 
     void SceneLightDistribute(int targetCount);
     float GetSpotPower();

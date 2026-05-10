@@ -60,6 +60,15 @@ void LightHandler::InitLights() {
         });
 }
 
+void AnglesToRotVector(XMFLOAT3* destVec, float angleVertical, float angleHorizontal) {
+    return XMStoreFloat3(destVec, XMVector3Normalize(XMVectorSet(
+        -sinf(angleVertical * 3.14159265f / 180.0f),
+        -cosf(angleVertical * 3.14159265f / 180.0f),
+        tanf(angleHorizontal * 3.14159265f / 180.0f), 0.0f)));
+}
+
+
+
 // ----- getters -----
 
 float LightHandler::GetSpotPower() { return isSceneLightBlurOn ? 20.0f : 500.0f;  }
@@ -97,12 +106,8 @@ XMMATRIX LightHandler::GetSpotlightRot(int idx)
     if (idx >= (int)lightsScene.size())
         return XMMatrixIdentity();
 
-    // Mesh default forward/down direction
-    // (no rotation when spotlight points downward)
     XMVECTOR defaultDir =
         XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
-
-    // Spotlight direction
     XMVECTOR targetDir =
         XMVector3Normalize(
             XMLoadFloat3(&lightsScene[idx].direction));
@@ -110,25 +115,16 @@ XMMATRIX LightHandler::GetSpotlightRot(int idx)
     float dot =
         XMVectorGetX(
             XMVector3Dot(defaultDir, targetDir));
-
     dot = std::clamp(dot, -1.0f, 1.0f);
 
-    // Same direction -> identity
     if (fabs(dot - 1.0f) < 0.0001f)
-    {
         return XMMatrixIdentity();
-    }
-
-    // Opposite direction -> 180 deg rotation
     if (fabs(dot + 1.0f) < 0.0001f)
-    {
         return XMMatrixRotationX(XM_PI);
-    }
 
     XMVECTOR axis =
         XMVector3Normalize(
             XMVector3Cross(defaultDir, targetDir));
-
     float angle = acosf(dot);
 
     return XMMatrixRotationAxis(axis, angle);
@@ -178,83 +174,80 @@ void LightHandler::RemoveSceneLight() {
 void LightHandler::ChangeLightEffect(int effectIndex) {
     lightEffectIdx = effectIndex;
     lightEffectStartTime = -1.0;
+
+    switch (lightEffectIdx) {
+    case 0: // White, static
+        for (auto& l : lightsScene) {
+            l.color = { 1.0f, 1.0f, 1.0f };
+            l.direction = { 0.0f, -1.0f, 0.0f };
+            l.isEnabled = true;
+        }
+        lightEffectPeriod = -1;
+        angVFunc = NULL;
+        angHFunc = NULL;
+        colorFunc = NULL;
+        break;
+
+    case 1: // Hue pan, wave to front
+        for (auto& l : lightsScene) {
+            l.color = { 1.0f, 0.0f, 0.0f };
+            l.direction = { 0.0f, -1.0f, l.position.z / 3 };
+            l.isEnabled = true;
+        }
+        lightEffectPeriod = 16;
+        angVFunc = [](float z, float t) { return 60.0f * (-cos((t + abs(z / 10)) * XM_2PI) / 2 + 0.5f); };
+        angHFunc = [](float z, float t) { return 45.0f * z / 3;};
+        colorFunc = [](float z, float t) {
+                float r = fabs(t * 6.0f - 3.0f) - 1.0f;
+                float g = 2.0f - fabs(t * 6.0f - 2.0f);
+                float b = 2.0f - fabs(t * 6.0f - 4.0f);
+
+                return XMFLOAT3(
+                    std::clamp(r, 0.0f, 1.0f),
+                    std::clamp(g, 0.0f, 1.0f),
+                    std::clamp(b, 0.0f, 1.0f)
+                );
+            };
+        break;
+
+    case 2: // White flashing, 45deg to front and slight apart
+        for (auto& l : lightsScene) {
+            l.color = { 1.0f, 0.0f, 0.0f };
+            l.direction = { -1.0f, -1.0f, l.position.z / 24 };
+            l.isEnabled = true;
+        }
+        lightEffectPeriod = 1;
+        angVFunc = NULL;
+        angHFunc = NULL;
+        colorFunc = [](float z, float t) {
+            if((t>0.5) ^ ((int)z%2==0)) return XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+            else return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+            };
+        break;
+    }
 }
 
 void LightHandler::UpdateSpotlights(float totalTime) {
-    if (lightEffectStartTime == -1.0) {
+    if (lightEffectBPM <= 0 || lightEffectPeriod <= 0)
+        return;
+
+    if (lightEffectStartTime == -1.0) 
         lightEffectStartTime = totalTime;
-    }
+
     float effectTime = totalTime - lightEffectStartTime;
+    double fTime = fmod(effectTime / (60.0 / lightEffectBPM * lightEffectPeriod), 1);
 
-    switch (lightEffectIdx) {
-    case 0:
-        if (effectTime == 0.0) {
-            for (auto& l : lightsScene) {
-                l.color = { 1.0f, 1.0f, 1.0f };
-                l.direction = { 0.0f, -1.0f, 0.0f };
-                l.isEnabled = true;
-            }
-        }
-        else {}
-        break;
-
-
-    case 1:
-        if (effectTime == 0.0) {
-            for (auto& l : lightsScene) {
-                l.color = { 1.0f, 0.0f, 0.0f };
-                l.direction = { 0.0f, -1.0f, 0.0f };
-                l.isEnabled = true;
-            }
-        }
-        else {
-            const float huePeriod = 10.0f;
-            const float tiltPeriod = 5.0f;
-
-            float hueT = fmod(effectTime, huePeriod) / huePeriod;
-
-            float tiltT = cos((effectTime / tiltPeriod) * 2.0f * 3.14159265f) * 0.5f + 0.5f;
-
-            // angle from straight down (-90°) to -30°
-            float angle = -60.0f + (0.0f - -60.0f) * tiltT;
-            float rad = angle * 3.14159265f / 180.0f;
-
-            // direction (tilted toward +X axis)
-            XMFLOAT3 tiltedDirF(
-                sinf(rad),
-                -cosf(rad),
-                0.0f
-            );
-
-            // normalize direction
-            XMVECTOR dir = XMVector3Normalize(XMLoadFloat3(&tiltedDirF));
+    for (auto& l : lightsScene)
+    {
+        if (colorFunc != NULL) 
+            l.color = colorFunc(l.position.z, fTime);
+        if (angVFunc != NULL && angHFunc != NULL) {
             XMFLOAT3 tiltedDir;
-            XMStoreFloat3(&tiltedDir, dir);
-
-            // HSV → RGB
-            auto HueToRGB = [](float h)
-                {
-                    float r = fabs(h * 6.0f - 3.0f) - 1.0f;
-                    float g = 2.0f - fabs(h * 6.0f - 2.0f);
-                    float b = 2.0f - fabs(h * 6.0f - 4.0f);
-
-                    return XMFLOAT3(
-                        std::clamp(r, 0.0f, 1.0f),
-                        std::clamp(g, 0.0f, 1.0f),
-                        std::clamp(b, 0.0f, 1.0f)
-                    );
-                };
-
-            XMFLOAT3 color = HueToRGB(hueT);
-
-            for (auto& l : lightsScene)
-            {
-                l.color = color;
-                l.direction = tiltedDir;
-                l.isEnabled = true;
-            }
+            float angV = angVFunc(l.position.z, fTime);
+            float angH = angHFunc(l.position.z, fTime);
+            AnglesToRotVector(&tiltedDir, angV, angH);
+            l.direction = tiltedDir;
         }
-        break;
     }
 }
 
