@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 19;
+    static const UINT ObjectCount = 31;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -719,16 +719,27 @@ private:
         UpdateObjectCB(5, djDeskWorld, view, proj, djDeskColor, 1.0f, cbSize);
         // Speakers
         UpdateObjectCB(6, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        UpdateObjectCB(7, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        UpdateObjectCB(8, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        UpdateObjectCB(9, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Railing
-        UpdateObjectCB(7, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(8, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(9, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(10, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(11, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(12, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         // lightCone
         for (int i = 0; i < MAX_LIGHTS_SCENE; ++i) {
             XMMATRIX coneWorld =
                 m_lighting.GetSpotlightRot(i) *
                 m_lighting.GetSpotlightPos(i);
-            UpdateObjectCB(10+i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+            UpdateObjectCB(13+i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+
+            XMMATRIX lampWorld =
+                XMMatrixScaling(2.0f, 2.0f, 2.0f) *
+                m_lighting.GetSpotlightRot(i) *
+                XMMatrixTranslation(0.0f, -0.3f, -0.11f) * //offset
+                m_lighting.GetSpotlightPos(i);
+
+            UpdateObjectCB(22 + i, lampWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.2f, cbSize);
         }
     }
 

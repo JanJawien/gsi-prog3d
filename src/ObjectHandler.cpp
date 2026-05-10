@@ -162,19 +162,31 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/stairs.obj", L"Assets/wood.dds", 3);
     LoadObject("Assets/dj-setup.obj", L"Assets/black.dds", 4);
     LoadObject("Assets/dj-desk.obj", L"Assets/crate.dds", 5);
-    LoadObject("Assets/speakers.obj", L"Assets/black.dds", 6);
-    LoadObject("Assets/lights-railing-back.obj", L"Assets/railing.dds", 7, true);
-    LoadObject("Assets/lights-railing-bottom.obj", L"Assets/railing.dds", 8, true);
-    LoadObject("Assets/lights-railing-front.obj", L"Assets/railing.dds", 9, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 10, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 11, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 12, true, true);
+    LoadObject("Assets/speaker-right.obj", L"Assets/black.dds", 6);
+    LoadObject("Assets/speaker-right-back.obj", L"Assets/black.dds", 7);
+    LoadObject("Assets/speaker-left.obj", L"Assets/black.dds", 8);
+    LoadObject("Assets/speaker-left-back.obj", L"Assets/black.dds", 9);
+    LoadObject("Assets/lights-railing-back.obj", L"Assets/railing.dds", 10, true);
+    LoadObject("Assets/lights-railing-bottom.obj", L"Assets/railing.dds", 11, true);
+    LoadObject("Assets/lights-railing-front.obj", L"Assets/railing.dds", 12, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 13, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 14, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 15, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 16, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 17, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 18, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 19, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 20, true, true);
+    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 21, true, true);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 22);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 23);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 24);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 25);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 26);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 27);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 28);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 29);
+    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 30);
 }
 
 // ===== public =====
