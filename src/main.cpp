@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 48;
+    static const UINT ObjectCount = 220;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -124,9 +124,23 @@ private:
     std::array<bool, ObjectCount> m_objectColorChanged{};
     std::array<DirectX::XMFLOAT4, ObjectCount> m_objectBaseColor{};
     std::array<float, ObjectCount> m_objectBaseUvScale{};
+    std::array<float, ObjectCount> m_objectScale{};
 
     int m_addedBottleCount = 0;
+    // Disco floor
+    bool m_discoFloorOn = true;
+    float m_discoTimer = 0.0f;
+    float m_discoChangeTime = 0.35f;
 
+    UINT m_discoBaseIndex = 0;
+    UINT m_discoFirstIndex = 0;
+    UINT m_discoTileCount = 0;
+
+    // Wiêkszy parkiet
+    static const UINT DiscoRows = 8;
+    static const UINT DiscoCols = 9;
+
+    std::array<DirectX::XMFLOAT4, ObjectCount> m_discoColors{};
     LightHandler m_lighting;
     ObjectHandler m_objects;
 
@@ -497,7 +511,382 @@ private:
 
     // ----------------------------------------------------------------------------------
     // Model loading functions
+    XMFLOAT4 RandomDiscoColor()
+    {
+        std::uniform_real_distribution<float> colorDist(0.45f, 2.2f);
 
+        return XMFLOAT4(
+            colorDist(gen),
+            colorDist(gen),
+            colorDist(gen),
+            1.0f
+        );
+    }
+
+    Mesh CreateQuadMesh(float centerX, float centerY, float centerZ, float sizeX, float sizeZ)
+    {
+        Mesh mesh;
+
+        float hx = sizeX * 0.5f;
+        float hz = sizeZ * 0.5f;
+
+        mesh.vertices =
+        {
+            { XMFLOAT3(centerX - hx, centerY, centerZ - hz), XMFLOAT2(0.0f, 0.0f) },
+            { XMFLOAT3(centerX + hx, centerY, centerZ - hz), XMFLOAT2(1.0f, 0.0f) },
+            { XMFLOAT3(centerX + hx, centerY, centerZ + hz), XMFLOAT2(1.0f, 1.0f) },
+            { XMFLOAT3(centerX - hx, centerY, centerZ + hz), XMFLOAT2(0.0f, 1.0f) }
+        };
+
+        mesh.indices =
+        {
+            0, 1, 2,
+            0, 2, 3
+        };
+
+        return mesh;
+    }
+
+    void CreateSolidColorTexture(UINT descriptorIndex, ObjectRenderData& obj, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
+    {
+        uint8_t pixelData[4] = { r, g, b, a };
+
+        D3D12_RESOURCE_DESC texDesc = {};
+        texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        texDesc.Width = 1;
+        texDesc.Height = 1;
+        texDesc.DepthOrArraySize = 1;
+        texDesc.MipLevels = 1;
+        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.SampleDesc.Count = 1;
+        texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+        D3D12_HEAP_PROPERTIES defaultHeapProps = {};
+        defaultHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &defaultHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &texDesc,
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS(&obj.texture)));
+
+        UINT64 uploadBufferSize = 0;
+        D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint = {};
+        UINT numRows = 0;
+        UINT64 rowSizeInBytes = 0;
+
+        m_device->GetCopyableFootprints(
+            &texDesc,
+            0,
+            1,
+            0,
+            &footprint,
+            &numRows,
+            &rowSizeInBytes,
+            &uploadBufferSize
+        );
+
+        D3D12_RESOURCE_DESC uploadDesc = {};
+        uploadDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        uploadDesc.Width = uploadBufferSize;
+        uploadDesc.Height = 1;
+        uploadDesc.DepthOrArraySize = 1;
+        uploadDesc.MipLevels = 1;
+        uploadDesc.SampleDesc.Count = 1;
+        uploadDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+        D3D12_HEAP_PROPERTIES uploadHeapProps = {};
+        uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &uploadHeapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &uploadDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&obj.textureUpload)));
+
+        uint8_t* mapped = nullptr;
+        ThrowIfFailed(obj.textureUpload->Map(0, nullptr, reinterpret_cast<void**>(&mapped)));
+        memcpy(mapped + footprint.Offset, pixelData, 4);
+        obj.textureUpload->Unmap(0, nullptr);
+
+        ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
+        ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), nullptr));
+
+        D3D12_TEXTURE_COPY_LOCATION dst = {};
+        dst.pResource = obj.texture.Get();
+        dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst.SubresourceIndex = 0;
+
+        D3D12_TEXTURE_COPY_LOCATION src = {};
+        src.pResource = obj.textureUpload.Get();
+        src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        src.PlacedFootprint = footprint;
+
+        m_commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+
+        D3D12_RESOURCE_BARRIER barrier = {};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        barrier.Transition.pResource = obj.texture.Get();
+        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+        barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+        m_commandList->ResourceBarrier(1, &barrier);
+
+        ThrowIfFailed(m_commandList->Close());
+        ID3D12CommandList* lists[] = { m_commandList.Get() };
+        m_commandQueue->ExecuteCommandLists(1, lists);
+        WaitForGpu();
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+
+        D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
+        srvHandle.ptr += static_cast<SIZE_T>(descriptorIndex) * m_srvDescriptorSize;
+        m_device->CreateShaderResourceView(obj.texture.Get(), &srvDesc, srvHandle);
+
+        obj.srvGpu = m_srvHeap->GetGPUDescriptorHandleForHeapStart();
+        obj.srvGpu.ptr += static_cast<UINT64>(descriptorIndex) * m_srvDescriptorSize;
+    }
+
+    void AddDiscoBase(float centerX, float y, float centerZ, float sizeX, float sizeZ)
+    {
+        UINT index = static_cast<UINT>(m_objects.GetObjects().size());
+
+        if (index >= ObjectCount)
+            return;
+
+        ObjectRenderData obj{};
+        obj.mesh = CreateQuadMesh(centerX, y, centerZ, sizeX, sizeZ);
+        obj.meshCenter = XMFLOAT3(centerX, y, centerZ);
+        obj.isTransparent = false;
+        obj.isLightCone = false;
+        obj.isVisible = true;
+
+        XMStoreFloat4x4(&obj.worldMatrix, XMMatrixIdentity());
+
+        CreateMeshBuffers(obj);
+        CreateSolidColorTexture(index, obj, 255, 255, 255, 255);
+
+        m_objects.GetObjects().push_back(obj);
+
+        m_objectMoveOffset[index] = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        m_objectRotationY[index] = 0.0f;
+        m_objectVisible[index] = true;
+        m_objectColorChanged[index] = false;
+        m_objectBaseColor[index] = XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f);
+        m_objectBaseUvScale[index] = 1.0f;
+        m_objectScale[index] = 1.0f;
+        m_discoBaseIndex = index;
+    }
+
+    void AddDiscoTile(float x, float y, float z, float size)
+    {
+        UINT index = static_cast<UINT>(m_objects.GetObjects().size());
+
+        if (index >= ObjectCount)
+            return;
+
+        ObjectRenderData obj{};
+        obj.mesh = CreateQuadMesh(x, y, z, size, size);
+        obj.meshCenter = XMFLOAT3(x, y, z);
+        obj.isTransparent = false;
+        obj.isLightCone = false;
+        obj.isVisible = true;
+
+        XMStoreFloat4x4(&obj.worldMatrix, XMMatrixIdentity());
+
+        CreateMeshBuffers(obj);
+
+        // Bia³a tekstura 1x1, ¿eby nie by³o wzorków ani czarnych pasków
+        CreateSolidColorTexture(index, obj, 255, 255, 255, 255);
+
+        m_objects.GetObjects().push_back(obj);
+
+        m_objectMoveOffset[index] = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        m_objectRotationY[index] = 0.0f;
+        m_objectVisible[index] = true;
+        m_objectColorChanged[index] = false;
+        m_objectBaseColor[index] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        m_objectBaseUvScale[index] = 1.0f;
+        m_objectScale[index] = 1.0f;
+        m_discoColors[index] = RandomDiscoColor();
+    }
+
+    void CreateDiscoFloor()
+    {
+        m_discoFirstIndex = 0;
+        m_discoTileCount = 0;
+
+        float tileSize = 0.72f;
+        float gap = 0.08f;
+        float step = tileSize + gap;
+
+        // Parkiet zaczyna siê bli¿ej sceny i idzie w stronê kamery.
+        // Jeœli bêdzie za blisko/za daleko, zmieniaj tylko startX.
+        float startX = 0.55f;
+
+        float totalX = DiscoRows * tileSize + (DiscoRows - 1) * gap;
+        float totalZ = DiscoCols * tileSize + (DiscoCols - 1) * gap;
+
+        // centrowanie na szerokoœæ sali
+        float startZ = -0.5f * totalZ + tileSize * 0.5f;
+
+        float baseCenterX = startX + 0.5f * (totalX - tileSize);
+        float baseCenterZ = startZ + 0.5f * (totalZ - tileSize);
+
+        // czarna p³yta pod spodem, ¿eby nie by³o widaæ zwyk³ej pod³ogi w szparach
+        AddDiscoBase(
+            baseCenterX,
+            0.020f,
+            baseCenterZ,
+            totalX + 0.40f,
+            totalZ + 0.40f
+        );
+
+        m_discoFirstIndex = static_cast<UINT>(m_objects.GetObjects().size());
+
+        float tilesY = 0.035f;
+
+        for (UINT row = 0; row < DiscoRows; ++row)
+        {
+            for (UINT col = 0; col < DiscoCols; ++col)
+            {
+                float x = startX + static_cast<float>(row) * step;
+                float z = startZ + static_cast<float>(col) * step;
+
+                AddDiscoTile(x, tilesY, z, tileSize);
+            }
+        }
+
+        m_discoTileCount =
+            static_cast<UINT>(m_objects.GetObjects().size()) - m_discoFirstIndex;
+    }
+
+    void UpdateDiscoFloor(float deltaTime)
+    {
+        if (!m_discoFloorOn)
+            return;
+
+        m_discoTimer += deltaTime;
+
+        if (m_discoTimer < m_discoChangeTime)
+            return;
+
+        m_discoTimer = 0.0f;
+
+        for (UINT i = m_discoFirstIndex; i < m_discoFirstIndex + m_discoTileCount; ++i)
+        {
+            if (i < ObjectCount)
+                m_discoColors[i] = RandomDiscoColor();
+        }
+    }
+    void SetObjectLayout(
+        UINT index,
+        XMFLOAT3 offset,
+        float scale = 1.0f,
+        float rotYDegrees = 0.0f)
+    {
+        if (index >= ObjectCount)
+            return;
+
+        m_objectMoveOffset[index] = offset;
+        m_objectScale[index] = scale;
+        m_objectRotationY[index] = XMConvertToRadians(rotYDegrees);
+        m_objectVisible[index] = true;
+
+        if (index < m_objects.GetObjects().size())
+            m_objects.GetObjects()[index].isVisible = true;
+    }
+
+    UINT AddObjectCopy(
+        UINT sourceIndex,
+        XMFLOAT3 offset,
+        float scale = 1.0f,
+        float rotYDegrees = 0.0f,
+        bool changedColor = false)
+    {
+        if (sourceIndex >= m_objects.GetObjects().size())
+            return UINT_MAX;
+
+        if (m_objects.GetObjects().size() >= ObjectCount)
+            return UINT_MAX;
+
+        UINT newIndex = static_cast<UINT>(m_objects.GetObjects().size());
+
+        ObjectRenderData copy = m_objects.GetObjects()[sourceIndex];
+        copy.isVisible = true;
+
+        XMStoreFloat4x4(&copy.worldMatrix, XMMatrixIdentity());
+
+        m_objects.GetObjects().push_back(copy);
+
+        m_objectMoveOffset[newIndex] = offset;
+        m_objectRotationY[newIndex] = XMConvertToRadians(rotYDegrees);
+        m_objectVisible[newIndex] = true;
+        m_objectColorChanged[newIndex] = changedColor;
+        m_objectBaseColor[newIndex] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+        m_objectBaseUvScale[newIndex] = 1.0f;
+        m_objectScale[newIndex] = scale;
+
+        m_objects.GetObjects()[newIndex].isVisible = true;
+
+        return newIndex;
+    }
+
+    void ApplySceneLayout()
+    {
+        // Reset do czystego, bezkolizyjnego uk³adu (bazowe pozycje z plików .obj)
+        // oraz tylko kilka kontrolowanych kopii, ¿eby scena nie wygl¹da³a pusto.
+
+        const XMFLOAT3 zero(0.0f, 0.0f, 0.0f);
+
+        // Rdzeñ sceny – bez zmian funkcjonalnych, tylko porz¹dkujemy transformacje
+        SetObjectLayout(0, zero, 1.0f, 0.0f);  // room
+        SetObjectLayout(1, zero, 1.0f, 0.0f);  // scene base / stage
+        SetObjectLayout(3, zero, 1.0f, 0.0f);  // stairs
+
+        // DJ / scena jako punkt fokusowy – zostaje na froncie (pozycje z modelu)
+        SetObjectLayout(4, zero, 1.0f, 0.0f);  // dj setup
+        SetObjectLayout(5, zero, 1.0f, 0.0f);  // dj desk
+
+        // G³oœniki – bez powiêkszania i bez przesuwania, ¿eby nie wchodzi³y w œciany / parkiet
+        SetObjectLayout(6, zero, 1.0f, 0.0f);
+        SetObjectLayout(7, zero, 1.0f, 0.0f);
+        SetObjectLayout(8, zero, 1.0f, 0.0f);
+        SetObjectLayout(9, zero, 1.0f, 0.0f);
+
+        // Bar + drzwi + butelki – wracaj¹ do pozycji z modelu (bar przy œcianie, drzwi nieblokowane)
+        SetObjectLayout(31, zero, 1.0f, 0.0f);
+        SetObjectLayout(32, zero, 1.0f, 0.0f);
+        SetObjectLayout(34, zero, 1.0f, 0.0f);
+        SetObjectLayout(35, zero, 1.0f, 0.0f);
+
+        // Strefa lounge – sofa zostaje w rogu, bez sztucznego skalowania
+        SetObjectLayout(33, zero, 1.0f, 0.0f);
+
+        // Sto³y i krzes³a: strefa siedzenia wzd³u¿ jednej œciany.
+        // Bazowy zestaw zostaje tam, gdzie by³ w modelu, a dok³adamy tylko 1 kopiê,
+        // ¿eby zrobiæ drugi "cluster" bez wchodzenia na parkiet.
+        SetObjectLayout(2, zero, 1.0f, 0.0f);
+
+        // Dodajemy kopie tylko raz (gdy scena ma jeszcze tylko bazowe obiekty 0..35).
+        if (m_objects.GetObjects().size() == 36)
+        {
+            // Drugi zestaw sto³ów/krzese³ – nadal przy tej samej œcianie, ale przesuniêty wzd³u¿ niej.
+            AddObjectCopy(2, XMFLOAT3(1.2f, 0.0f, -2.6f), 1.0f, 180.0f, false);
+
+            // Druga sofa – tworzy bardziej czytelny k¹cik lounge przy œcianie (nie przy parkiecie).
+            AddObjectCopy(33, XMFLOAT3(4.4f, 0.0f, 0.0f), 1.0f, 180.0f, false);
+        }
+    }
     void LoadModels()
     {
         m_objects.SetMeshBufferFunc([this](ObjectRenderData& obj)
@@ -520,6 +909,8 @@ private:
             m_objectColorChanged[i] = false;
             m_objectBaseColor[i] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
             m_objectBaseUvScale[i] = 1.0f;
+            m_objectScale[i] = 1.0f;
+            m_discoColors[i] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
         }
 
         for (auto& obj : m_objects.GetObjects())
@@ -529,6 +920,12 @@ private:
         }
 
         m_djDeskCenter = m_objects.GetObjects()[5].meshCenter;
+
+        // Najpierw ustawiamy layout g³ównych obiektów i dodajemy kopie
+        ApplySceneLayout();
+
+        // Potem tworzymy disco floor, ¿eby by³ przed scen¹ i na œrodku
+        CreateDiscoFloor();
     }
 
     
@@ -727,7 +1124,7 @@ private:
         XMMATRIX view = m_camera.GetViewMatrix();
 
         m_lighting.UpdateSpotlights(totalTime);
-
+        UpdateDiscoFloor(deltaTime);
 
         XMMATRIX proj = XMMatrixPerspectiveFovLH(
             XMConvertToRadians(60.0f),
@@ -780,13 +1177,35 @@ private:
         // Dynamic duplicated objects reuse existing mesh/texture data but get their own transform and constant buffer.
         for (UINT i = 36; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
         {
+            XMFLOAT4 color = m_objectBaseColor[i];
+            float uvScale = m_objectBaseUvScale[i];
+
+            // Czarna p³yta pod parkietem
+            if (i == m_discoBaseIndex)
+            {
+                color = m_discoFloorOn
+                    ? XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f)
+                    : XMFLOAT4(0.03f, 0.03f, 0.03f, 1.0f);
+
+                uvScale = 1.0f;
+            }
+            // Kolorowe kafelki parkietu
+            else if (i >= m_discoFirstIndex && i < m_discoFirstIndex + m_discoTileCount)
+            {
+                color = m_discoFloorOn
+                    ? m_discoColors[i]
+                    : XMFLOAT4(0.10f, 0.10f, 0.10f, 1.0f);
+
+                uvScale = 1.0f;
+            }
+
             UpdateObjectCB(
                 i,
                 XMMatrixIdentity(),
                 view,
                 proj,
-                m_objectBaseColor[i],
-                m_objectBaseUvScale[i],
+                color,
+                uvScale,
                 cbSize
             );
         }
@@ -964,6 +1383,7 @@ private:
 
                 m_objectBaseColor[newIndex] = m_objectBaseColor[m_selectedObjectIndex];
                 m_objectBaseUvScale[newIndex] = m_objectBaseUvScale[m_selectedObjectIndex];
+                m_objectScale[newIndex] = m_objectScale[m_selectedObjectIndex];
 
                 m_selectedObjectIndex = static_cast<int>(newIndex);
                 updateWindowTitle();
@@ -1003,6 +1423,7 @@ private:
 
                 m_objectBaseColor[newIndex] = m_objectBaseColor[bottleSourceIndex];
                 m_objectBaseUvScale[newIndex] = m_objectBaseUvScale[bottleSourceIndex];
+                m_objectScale[newIndex] = 1.25f;
 
                 m_addedBottleCount++;
 
@@ -1150,6 +1571,10 @@ private:
             m_lighting.ChangeLightEffect(2);
             break;
 
+        case '3':
+            m_discoFloorOn = !m_discoFloorOn;
+            break;
+
         case '0':
             m_lighting.ChangeLightEffect(0);
             break;
@@ -1181,18 +1606,20 @@ private:
 
             XMFLOAT3 offset = m_objectMoveOffset[index];
             float rotY = m_objectRotationY[index];
+            float scale = m_objectScale[index];
 
             XMFLOAT3 center = m_objects.GetObjects()[index].meshCenter;
 
-            XMMATRIX rotateAroundCenter =
+            XMMATRIX transformAroundCenter =
                 XMMatrixTranslation(-center.x, -center.y, -center.z) *
+                XMMatrixScaling(scale, scale, scale) *
                 XMMatrixRotationY(rotY) *
                 XMMatrixTranslation(center.x, center.y, center.z);
 
             XMMATRIX move =
                 XMMatrixTranslation(offset.x, offset.y, offset.z);
 
-            finalWorld = rotateAroundCenter * world * move;
+            finalWorld = transformAroundCenter * world * move;
 
             XMStoreFloat4x4(&m_objects.GetObjects()[index].worldMatrix, finalWorld);
             m_objects.GetObjects()[index].isVisible = m_objectVisible[index];
