@@ -34,7 +34,7 @@ void LightHandler::SceneLightDistribute(int targetCount){
 void LightHandler::InitLights() {
     // Ambient light
     lightsOther.push_back({
-        { -3.0f, 4.5f, 0.0f }, 5.0f,
+        { -3.0f, 4.5f, 0.0f }, 3.0f,
         { 1.0f, 0.8f, 0.6f }, 20.0f,
         { 0,0,0 }, 1.0f,
         0, 1, {}
