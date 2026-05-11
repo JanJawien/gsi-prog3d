@@ -4,17 +4,15 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <limits>
 
 using namespace DirectX;
 
 
 // ----- private ------
 
-/// <summary>
-/// Load a new model from .obj file
-/// Use offset parameters to offset loaded model
-/// </summary>
-Mesh ObjectHandler::LoadGeometry(const std::string& filename,
+Mesh ObjectHandler::LoadGeometry(
+    const std::string& filename,
     float offsetX,
     float offsetY,
     float offsetZ)
@@ -25,8 +23,8 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
     if (!file.is_open())
         throw std::runtime_error("Failed to open OBJ file: " + filename);
 
-    std::vector<DirectX::XMFLOAT3> temp_positions;
-    std::vector<DirectX::XMFLOAT2> temp_uvs;
+    std::vector<XMFLOAT3> temp_positions;
+    std::vector<XMFLOAT2> temp_uvs;
 
     std::string line;
     while (std::getline(file, line))
@@ -37,18 +35,22 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
 
         if (prefix == "v")
         {
-            DirectX::XMFLOAT3 pos;
+            XMFLOAT3 pos;
             ss >> pos.x >> pos.y >> pos.z;
+
             pos.x += offsetX;
             pos.y += offsetY;
             pos.z += offsetZ;
+
             temp_positions.push_back(pos);
         }
         else if (prefix == "vt")
         {
-            DirectX::XMFLOAT2 uv;
+            XMFLOAT2 uv;
             ss >> uv.x >> uv.y;
-            uv.y = 1.0f - uv.y; 
+
+            uv.y = 1.0f - uv.y;
+
             temp_uvs.push_back(uv);
         }
         else if (prefix == "f")
@@ -58,7 +60,8 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
 
             while (ss >> vertexStr)
             {
-                int vIdx = 0, tIdx = 0, nIdx = 0;
+                int vIdx = 0;
+                int tIdx = 0;
 
                 size_t slash1 = vertexStr.find('/');
                 size_t slash2 = vertexStr.find('/', slash1 + 1);
@@ -70,24 +73,36 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
                 else
                 {
                     vIdx = std::stoi(vertexStr.substr(0, slash1));
+
                     if (slash2 == std::string::npos)
                     {
-                        tIdx = std::stoi(vertexStr.substr(slash1 + 1));
+                        std::string uvPart = vertexStr.substr(slash1 + 1);
+                        if (!uvPart.empty())
+                            tIdx = std::stoi(uvPart);
                     }
                     else
                     {
                         if (slash2 > slash1 + 1)
                         {
-                            tIdx = std::stoi(vertexStr.substr(slash1 + 1, slash2 - slash1 - 1));
+                            std::string uvPart = vertexStr.substr(
+                                slash1 + 1,
+                                slash2 - slash1 - 1
+                            );
+
+                            if (!uvPart.empty())
+                                tIdx = std::stoi(uvPart);
                         }
-                        nIdx = std::stoi(vertexStr.substr(slash2 + 1));
                     }
                 }
 
-                Vertex v;
-                if (vIdx > 0) v.position = temp_positions[vIdx - 1];
+                Vertex v{};
 
-                if (tIdx > 0 && tIdx <= (int)temp_uvs.size())
+                if (vIdx > 0 && vIdx <= static_cast<int>(temp_positions.size()))
+                    v.position = temp_positions[vIdx - 1];
+                else
+                    v.position = { 0.0f, 0.0f, 0.0f };
+
+                if (tIdx > 0 && tIdx <= static_cast<int>(temp_uvs.size()))
                     v.uv = temp_uvs[tIdx - 1];
                 else
                     v.uv = { 0.0f, 0.0f };
@@ -95,7 +110,7 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
                 faceVertices.push_back(v);
             }
 
-            for (size_t i = 1; i < faceVertices.size() - 1; ++i)
+            for (size_t i = 1; i + 1 < faceVertices.size(); ++i)
             {
                 mesh.vertices.push_back(faceVertices[0]);
                 mesh.indices.push_back(static_cast<uint16_t>(mesh.indices.size()));
@@ -112,9 +127,12 @@ Mesh ObjectHandler::LoadGeometry(const std::string& filename,
     return mesh;
 }
 
-void ObjectHandler::LoadObject(const std::string& objPath,
+void ObjectHandler::LoadObject(
+    const std::string& objPath,
     const wchar_t* texturePath,
-    UINT index, bool isTransparent, bool isLightCone)
+    UINT index,
+    bool isTransparent,
+    bool isLightCone)
 {
     if (objects.size() <= index)
         objects.resize(index + 1);
@@ -123,8 +141,11 @@ void ObjectHandler::LoadObject(const std::string& objPath,
 
     obj.mesh = LoadGeometry(objPath);
     CalculateMeshCenter(obj);
+
     obj.isTransparent = isTransparent;
     obj.isLightCone = isLightCone;
+
+    XMStoreFloat4x4(&obj.worldMatrix, XMMatrixIdentity());
 
     if (m_createMeshBuffers)
         m_createMeshBuffers(obj);
@@ -136,7 +157,10 @@ void ObjectHandler::LoadObject(const std::string& objPath,
 void ObjectHandler::CalculateMeshCenter(ObjectRenderData& obj)
 {
     if (obj.mesh.vertices.empty())
+    {
         obj.meshCenter = XMFLOAT3(0.0f, 0.0f, 0.0f);
+        return;
+    }
 
     float minX = obj.mesh.vertices[0].position.x;
     float minY = obj.mesh.vertices[0].position.y;
@@ -148,54 +172,91 @@ void ObjectHandler::CalculateMeshCenter(ObjectRenderData& obj)
 
     for (const auto& v : obj.mesh.vertices)
     {
-        minX = min(minX, v.position.x);
-        minY = min(minY, v.position.y);
-        minZ = min(minZ, v.position.z);
+        minX = (std::min)(minX, v.position.x);
+        minY = (std::min)(minY, v.position.y);
+        minZ = (std::min)(minZ, v.position.z);
 
-        maxX = max(maxX, v.position.x);
-        maxY = max(maxY, v.position.y);
-        maxZ = max(maxZ, v.position.z);
+        maxX = (std::max)(maxX, v.position.x);
+        maxY = (std::max)(maxY, v.position.y);
+        maxZ = (std::max)(maxZ, v.position.z);
     }
 
     obj.meshCenter = XMFLOAT3(
         (minX + maxX) * 0.5f,
         (minY + maxY) * 0.5f,
-        (minZ + maxZ) * 0.5f);
+        (minZ + maxZ) * 0.5f
+    );
 }
 
-bool ObjectHandler::IsCameraLookingAtObjectCenter(
-    XMFLOAT3 camPos, XMVECTOR camFwd, ObjectRenderData obj, float maxDistance, float minDot)
+bool ObjectHandler::RayIntersectsTriangle(
+    XMVECTOR rayOrigin,
+    XMVECTOR rayDir,
+    XMVECTOR v0,
+    XMVECTOR v1,
+    XMVECTOR v2,
+    float& outDistance)
 {
-    XMVECTOR camPosV = XMLoadFloat3(&camPos);
-    XMVECTOR pointV = XMLoadFloat3(&(obj.meshCenter));
-    XMVECTOR toPoint = XMVectorSubtract(pointV, camPosV);
+    const float EPSILON = 0.000001f;
 
-    float distance = XMVectorGetX(XMVector3Length(toPoint));
-    if (distance > maxDistance)
+    XMVECTOR edge1 = XMVectorSubtract(v1, v0);
+    XMVECTOR edge2 = XMVectorSubtract(v2, v0);
+
+    XMVECTOR h = XMVector3Cross(rayDir, edge2);
+    float a = XMVectorGetX(XMVector3Dot(edge1, h));
+
+    if (a > -EPSILON && a < EPSILON)
         return false;
 
-    XMVECTOR dirToPoint = XMVector3Normalize(toPoint);
-    XMVECTOR forward = XMVector3Normalize(camFwd);
+    float f = 1.0f / a;
 
-    float dot = XMVectorGetX(XMVector3Dot(forward, dirToPoint));
-    return dot >= minDot;
+    XMVECTOR s = XMVectorSubtract(rayOrigin, v0);
+    float u = f * XMVectorGetX(XMVector3Dot(s, h));
+
+    if (u < 0.0f || u > 1.0f)
+        return false;
+
+    XMVECTOR q = XMVector3Cross(s, edge1);
+    float v = f * XMVectorGetX(XMVector3Dot(rayDir, q));
+
+    if (v < 0.0f || u + v > 1.0f)
+        return false;
+
+    float t = f * XMVectorGetX(XMVector3Dot(edge2, q));
+
+    if (t > EPSILON)
+    {
+        outDistance = t;
+        return true;
+    }
+
+    return false;
 }
 
-void ObjectHandler::LoadAllObjects() {
+
+// ===== public =====
+
+ObjectHandler::ObjectHandler()
+{
+}
+
+void ObjectHandler::LoadAllObjects()
+{
     LoadObject("Assets/room.obj", L"Assets/bricks.dds", 0);
     LoadObject("Assets/scene-base.obj", L"Assets/wood.dds", 1);
     LoadObject("Assets/tables-and-chairs.obj", L"Assets/wood.dds", 2);
     LoadObject("Assets/stairs.obj", L"Assets/wood.dds", 3);
     LoadObject("Assets/dj-setup.obj", L"Assets/black.dds", 4);
     LoadObject("Assets/dj-desk.obj", L"Assets/wood.dds", 5);
+
     LoadObject("Assets/speaker-right.obj", L"Assets/black.dds", 6);
     LoadObject("Assets/speaker-right-back.obj", L"Assets/black.dds", 7);
     LoadObject("Assets/speaker-left.obj", L"Assets/black.dds", 8);
     LoadObject("Assets/speaker-left-back.obj", L"Assets/black.dds", 9);
+
     LoadObject("Assets/lights-railing-back.obj", L"Assets/railing.dds", 10, true);
     LoadObject("Assets/lights-railing-bottom.obj", L"Assets/railing.dds", 11, true);
     LoadObject("Assets/lights-railing-front.obj", L"Assets/railing.dds", 12, true);
-	//Do not change this order, the light cones are expected to be in indices 13-21 and the lamp ceilings in 22-30
+
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 13, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 14, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 15, true, true);
@@ -205,6 +266,7 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 19, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 20, true, true);
     LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 21, true, true);
+
     LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 22);
     LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 23);
     LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 24);
@@ -222,24 +284,64 @@ void ObjectHandler::LoadAllObjects() {
     LoadObject("Assets/beer2.obj", L"Assets/fabric.dds", 35);
 }
 
-// ===== public =====
-// ===== constructors =====
-
-ObjectHandler::ObjectHandler()
+int ObjectHandler::GetClickedObjectIndex(
+    XMFLOAT3 cameraPos,
+    XMVECTOR cameraForward)
 {
+    XMVECTOR rayOrigin = XMLoadFloat3(&cameraPos);
+    XMVECTOR rayDir = XMVector3Normalize(cameraForward);
 
-}
+    int bestObjectIndex = -1;
+    float closestDistance = (std::numeric_limits<float>::max)();
 
-// ===== interaction =====
-
-int ObjectHandler::GetClickedObjectIndex(XMFLOAT3 cameraPos, XMVECTOR cameraForward) {
-    int i = 0;
-    for (auto& obj : objects)
+    for (int objIndex = 0; objIndex < static_cast<int>(objects.size()); ++objIndex)
     {
-        if (IsCameraLookingAtObjectCenter(cameraPos, cameraForward, obj, 6.0f, 0.80f)) {
-            return i;
+        ObjectRenderData& obj = objects[objIndex];
+
+        if (!obj.isVisible)
+            continue;
+
+        if (obj.mesh.vertices.empty() || obj.mesh.indices.empty())
+            continue;
+
+        if (obj.isLightCone)
+            continue;
+
+        XMMATRIX world = XMLoadFloat4x4(&obj.worldMatrix);
+
+        for (size_t i = 0; i + 2 < obj.mesh.indices.size(); i += 3)
+        {
+            uint16_t index0 = obj.mesh.indices[i];
+            uint16_t index1 = obj.mesh.indices[i + 1];
+            uint16_t index2 = obj.mesh.indices[i + 2];
+
+            if (index0 >= obj.mesh.vertices.size() ||
+                index1 >= obj.mesh.vertices.size() ||
+                index2 >= obj.mesh.vertices.size())
+            {
+                continue;
+            }
+
+            XMVECTOR v0 = XMLoadFloat3(&obj.mesh.vertices[index0].position);
+            XMVECTOR v1 = XMLoadFloat3(&obj.mesh.vertices[index1].position);
+            XMVECTOR v2 = XMLoadFloat3(&obj.mesh.vertices[index2].position);
+
+            v0 = XMVector3TransformCoord(v0, world);
+            v1 = XMVector3TransformCoord(v1, world);
+            v2 = XMVector3TransformCoord(v2, world);
+
+            float hitDistance = 0.0f;
+
+            if (RayIntersectsTriangle(rayOrigin, rayDir, v0, v1, v2, hitDistance))
+            {
+                if (hitDistance < closestDistance)
+                {
+                    closestDistance = hitDistance;
+                    bestObjectIndex = objIndex;
+                }
+            }
         }
-        ++i;
     }
-    return -1;
+
+    return bestObjectIndex;
 }

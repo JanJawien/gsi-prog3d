@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 36;
+    static const UINT ObjectCount = 48;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -108,10 +108,24 @@ private:
 
     Camera m_camera;
 
+
+
     bool m_djDeskGlowOn = false;
     bool m_djDeskRotateOn = false;
     float m_djDeskAngle = 0.0f;
     DirectX::XMFLOAT3 m_djDeskCenter = { 0.0f, 0.0f, 0.0f };
+
+    // New interaction system
+    int m_selectedObjectIndex = -1;
+
+    std::array<DirectX::XMFLOAT3, ObjectCount> m_objectMoveOffset{};
+    std::array<float, ObjectCount> m_objectRotationY{};
+    std::array<bool, ObjectCount> m_objectVisible{};
+    std::array<bool, ObjectCount> m_objectColorChanged{};
+    std::array<DirectX::XMFLOAT4, ObjectCount> m_objectBaseColor{};
+    std::array<float, ObjectCount> m_objectBaseUvScale{};
+
+    int m_addedBottleCount = 0;
 
     LightHandler m_lighting;
     ObjectHandler m_objects;
@@ -484,15 +498,36 @@ private:
     // ----------------------------------------------------------------------------------
     // Model loading functions
 
-    void LoadModels() {
-        m_objects.SetMeshBufferFunc([this](ObjectRenderData& obj) {
-            CreateMeshBuffers(obj); });
-        m_objects.SetTextureFunc([this](const wchar_t* path, UINT i, ObjectRenderData& obj) {
-            LoadDDSTexture(path, i, obj); });
+    void LoadModels()
+    {
+        m_objects.SetMeshBufferFunc([this](ObjectRenderData& obj)
+            {
+                CreateMeshBuffers(obj);
+            });
+
+        m_objects.SetTextureFunc([this](const wchar_t* path, UINT i, ObjectRenderData& obj)
+            {
+                LoadDDSTexture(path, i, obj);
+            });
 
         m_objects.LoadAllObjects();
-        
-        // temp just for desk spin
+
+        for (UINT i = 0; i < ObjectCount; ++i)
+        {
+            m_objectMoveOffset[i] = XMFLOAT3(0.0f, 0.0f, 0.0f);
+            m_objectRotationY[i] = 0.0f;
+            m_objectVisible[i] = true;
+            m_objectColorChanged[i] = false;
+            m_objectBaseColor[i] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+            m_objectBaseUvScale[i] = 1.0f;
+        }
+
+        for (auto& obj : m_objects.GetObjects())
+        {
+            XMStoreFloat4x4(&obj.worldMatrix, XMMatrixIdentity());
+            obj.isVisible = true;
+        }
+
         m_djDeskCenter = m_objects.GetObjects()[5].meshCenter;
     }
 
@@ -693,8 +728,6 @@ private:
 
         m_lighting.UpdateSpotlights(totalTime);
 
-        if (m_djDeskRotateOn)
-            m_djDeskAngle += deltaTime;
 
         XMMATRIX proj = XMMatrixPerspectiveFovLH(
             XMConvertToRadians(60.0f),
@@ -715,16 +748,10 @@ private:
         // DJ setup
         UpdateObjectCB(4, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // DJ desk
-        XMMATRIX djDeskWorld =
-            XMMatrixTranslation(-m_djDeskCenter.x, -m_djDeskCenter.y, -m_djDeskCenter.z) *
-            XMMatrixRotationY(m_djDeskAngle) *
-            XMMatrixTranslation(m_djDeskCenter.x, m_djDeskCenter.y, m_djDeskCenter.z);
 
-        XMFLOAT4 djDeskColor = m_djDeskGlowOn
-            ? XMFLOAT4(1.8f, 1.3f, 0.7f, 1.0f)
-            : XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
-        UpdateObjectCB(5, djDeskWorld, view, proj, djDeskColor, 1.0f, cbSize);
+        UpdateObjectCB(5, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+
         // Speakers
         UpdateObjectCB(6, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         UpdateObjectCB(7, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
@@ -759,6 +786,19 @@ private:
         // Beer bottles
         UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         UpdateObjectCB(35, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        // Dynamic duplicated objects reuse existing mesh/texture data but get their own transform and constant buffer.
+        for (UINT i = 36; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
+        {
+            UpdateObjectCB(
+                i,
+                XMMatrixIdentity(),
+                view,
+                proj,
+                m_objectBaseColor[i],
+                m_objectBaseUvScale[i],
+                cbSize
+            );
+        }
     }
 
     void Render()
@@ -793,35 +833,64 @@ private:
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
         ID3D12DescriptorHeap* heaps[] = { m_srvHeap.Get() };
         m_commandList->SetDescriptorHeaps(_countof(heaps), heaps);
-        
-        // Depth pass
+
+        // Opaque pass
         int i = -1;
         m_commandList->SetPipelineState(m_pipelineStateOpaque.Get());
+
         for (auto& obj : m_objects.GetObjects())
         {
             ++i;
-            if (obj.isTransparent) continue;
+
+            if (i >= static_cast<int>(ObjectCount))
+                continue;
+
+            if (!m_objectVisible[i] || !obj.isVisible)
+                continue;
+
+            if (obj.isTransparent)
+                continue;
+
             m_commandList->IASetVertexBuffers(0, 1, &obj.vbv);
             m_commandList->IASetIndexBuffer(&obj.ibv);
-            m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize));
-            m_commandList->SetGraphicsRootDescriptorTable(1, obj.srvGpu);
-            m_commandList->DrawIndexedInstanced(obj.indexCount, 1, 0, 0, 0);
-        }
-        
-        // Transparency pass
-        i = -1;
-        m_commandList->SetPipelineState(m_pipelineStateTransparent.Get());
-        for (auto& obj : m_objects.GetObjects())
-        {
-            ++i;
-            if (!obj.isTransparent) continue;
-            m_commandList->IASetVertexBuffers(0, 1, &obj.vbv);
-            m_commandList->IASetIndexBuffer(&obj.ibv);
-            m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize));
+
+            m_commandList->SetGraphicsRootConstantBufferView(
+                0,
+                m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize)
+            );
+
             m_commandList->SetGraphicsRootDescriptorTable(1, obj.srvGpu);
             m_commandList->DrawIndexedInstanced(obj.indexCount, 1, 0, 0, 0);
         }
 
+        // Transparent pass
+        i = -1;
+        m_commandList->SetPipelineState(m_pipelineStateTransparent.Get());
+
+        for (auto& obj : m_objects.GetObjects())
+        {
+            ++i;
+
+            if (i >= static_cast<int>(ObjectCount))
+                continue;
+
+            if (!m_objectVisible[i] || !obj.isVisible)
+                continue;
+
+            if (!obj.isTransparent)
+                continue;
+
+            m_commandList->IASetVertexBuffers(0, 1, &obj.vbv);
+            m_commandList->IASetIndexBuffer(&obj.ibv);
+
+            m_commandList->SetGraphicsRootConstantBufferView(
+                0,
+                m_constantBuffer->GetGPUVirtualAddress() + (i * cbSize)
+            );
+
+            m_commandList->SetGraphicsRootDescriptorTable(1, obj.srvGpu);
+            m_commandList->DrawIndexedInstanced(obj.indexCount, 1, 0, 0, 0);
+        }
 
         barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
         barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
@@ -851,57 +920,245 @@ private:
         m_fenceValues[m_frameIndex] = currentFenceValue + 1;
     }
 
-    void HandleKeyboardInput(WPARAM wParam) {
-        switch (wParam) {
+    void HandleKeyboardInput(WPARAM wParam)
+    {
+        const float moveStep = 0.25f;
+        const float rotateStep = XMConvertToRadians(15.0f);
+
+        auto hasSelectedObject = [this]() -> bool
+            {
+                return m_selectedObjectIndex >= 0 &&
+                    m_selectedObjectIndex < static_cast<int>(ObjectCount) &&
+                    m_selectedObjectIndex < static_cast<int>(m_objects.GetObjects().size()) &&
+                    m_objectVisible[m_selectedObjectIndex];
+            };
+
+        auto updateWindowTitle = [this]()
+            {
+                std::wstring title =
+                    L"Selected: " + std::to_wstring(m_selectedObjectIndex) +
+                    L" | E select/deselect | IJKL/UO move | R rotate | C color | M duplicate | N bottle | DEL hide";
+
+                SetWindowText(m_hwnd, title.c_str());
+            };
+
+        auto duplicateSelectedObject = [this, &updateWindowTitle]()
+            {
+                if (m_selectedObjectIndex < 0)
+                    return;
+
+                if (m_selectedObjectIndex >= static_cast<int>(m_objects.GetObjects().size()))
+                    return;
+
+                if (m_objects.GetObjects().size() >= ObjectCount)
+                    return;
+
+                UINT newIndex = static_cast<UINT>(m_objects.GetObjects().size());
+
+                ObjectRenderData copy = m_objects.GetObjects()[m_selectedObjectIndex];
+                copy.isVisible = true;
+                XMStoreFloat4x4(&copy.worldMatrix, XMMatrixIdentity());
+
+                m_objects.GetObjects().push_back(copy);
+
+                m_objectVisible[newIndex] = true;
+                m_objects.GetObjects()[newIndex].isVisible = true;
+
+                m_objectMoveOffset[newIndex] = m_objectMoveOffset[m_selectedObjectIndex];
+                m_objectMoveOffset[newIndex].x += 0.6f;
+                m_objectMoveOffset[newIndex].z += 0.6f;
+
+                m_objectRotationY[newIndex] = m_objectRotationY[m_selectedObjectIndex];
+                m_objectColorChanged[newIndex] = m_objectColorChanged[m_selectedObjectIndex];
+
+                m_objectBaseColor[newIndex] = m_objectBaseColor[m_selectedObjectIndex];
+                m_objectBaseUvScale[newIndex] = m_objectBaseUvScale[m_selectedObjectIndex];
+
+                m_selectedObjectIndex = static_cast<int>(newIndex);
+                updateWindowTitle();
+            };
+
+        auto addBottleOnBar = [this, &updateWindowTitle]()
+            {
+                const int bottleSourceIndex = 34;
+
+                if (bottleSourceIndex >= static_cast<int>(m_objects.GetObjects().size()))
+                    return;
+
+                if (m_objects.GetObjects().size() >= ObjectCount)
+                    return;
+
+                UINT newIndex = static_cast<UINT>(m_objects.GetObjects().size());
+
+                ObjectRenderData copy = m_objects.GetObjects()[bottleSourceIndex];
+                copy.isVisible = true;
+                XMStoreFloat4x4(&copy.worldMatrix, XMMatrixIdentity());
+
+                m_objects.GetObjects().push_back(copy);
+
+                m_objectVisible[newIndex] = true;
+                m_objects.GetObjects()[newIndex].isVisible = true;
+
+                // Small offsets so new bottles do not appear exactly in the same place.
+                float sideOffset = static_cast<float>(m_addedBottleCount % 5) * 0.18f;
+                float rowOffset = static_cast<float>(m_addedBottleCount / 5) * 0.18f;
+
+                m_objectMoveOffset[newIndex] = m_objectMoveOffset[bottleSourceIndex];
+                m_objectMoveOffset[newIndex].x += sideOffset;
+                m_objectMoveOffset[newIndex].z += rowOffset;
+
+                m_objectRotationY[newIndex] = 0.0f;
+                m_objectColorChanged[newIndex] = false;
+
+                m_objectBaseColor[newIndex] = m_objectBaseColor[bottleSourceIndex];
+                m_objectBaseUvScale[newIndex] = m_objectBaseUvScale[bottleSourceIndex];
+
+                m_addedBottleCount++;
+
+                m_selectedObjectIndex = static_cast<int>(newIndex);
+                updateWindowTitle();
+            };
+
+        switch (wParam)
+        {
         case VK_SPACE:
             m_lighting.ToggleAmbientLight();
             break;
+
         case VK_UP:
             m_lighting.AddSceneLight();
             break;
-        case VK_DOWN: 
+
+        case VK_DOWN:
             m_lighting.RemoveSceneLight();
             break;
+
         case 'B':
             m_lighting.ToggleSceneLightBlur();
             break;
-        case VK_OEM_PLUS:
-            break;
-        case VK_OEM_MINUS:
-            break;
+
         case VK_ESCAPE:
             PostQuitMessage(0);
             break;
 
+            // Select / deselect object
         case 'E':
-            switch (m_objects.GetClickedObjectIndex(m_camera.GetPosition(), m_camera.GetForward())) {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 6:
-                break;
-            case 5:
-                m_djDeskRotateOn = !m_djDeskRotateOn;
-                m_djDeskGlowOn = !m_djDeskGlowOn;
-                break;
+        {
+            int clickedObject = m_objects.GetClickedObjectIndex(
+                m_camera.GetPosition(),
+                m_camera.GetForward()
+            );
+
+            if (clickedObject == m_selectedObjectIndex)
+            {
+                m_selectedObjectIndex = -1;
+            }
+            else if (
+                clickedObject >= 0 &&
+                clickedObject < static_cast<int>(ObjectCount) &&
+                clickedObject < static_cast<int>(m_objects.GetObjects().size()) &&
+                m_objectVisible[clickedObject] &&
+                !m_objects.GetObjects()[clickedObject].isLightCone)
+            {
+                m_selectedObjectIndex = clickedObject;
+            }
+            else
+            {
+                m_selectedObjectIndex = -1;
+            }
+
+            updateWindowTitle();
+            break;
+        }
+
+        // Unselect object manually
+        case 'X':
+            m_selectedObjectIndex = -1;
+            updateWindowTitle();
+            break;
+
+            // Move selected object
+        case 'I':
+            if (hasSelectedObject())
+                m_objectMoveOffset[m_selectedObjectIndex].z += moveStep;
+            break;
+
+        case 'K':
+            if (hasSelectedObject())
+                m_objectMoveOffset[m_selectedObjectIndex].z -= moveStep;
+            break;
+
+        case 'J':
+            if (hasSelectedObject())
+                m_objectMoveOffset[m_selectedObjectIndex].x -= moveStep;
+            break;
+
+        case 'L':
+            if (hasSelectedObject())
+                m_objectMoveOffset[m_selectedObjectIndex].x += moveStep;
+            break;
+
+        case 'U':
+            if (hasSelectedObject())
+                m_objectMoveOffset[m_selectedObjectIndex].y += moveStep;
+            break;
+
+        case 'O':
+            if (hasSelectedObject())
+                m_objectMoveOffset[m_selectedObjectIndex].y -= moveStep;
+            break;
+
+            // Rotate selected object
+        case 'R':
+            if (hasSelectedObject())
+                m_objectRotationY[m_selectedObjectIndex] += rotateStep;
+            break;
+
+            // Change selected object appearance
+        case 'C':
+            if (hasSelectedObject())
+                m_objectColorChanged[m_selectedObjectIndex] =
+                !m_objectColorChanged[m_selectedObjectIndex];
+            break;
+
+            // Duplicate selected object
+        case 'M':
+            if (hasSelectedObject())
+                duplicateSelectedObject();
+            break;
+
+            // Add new bottle
+        case 'N':
+            addBottleOnBar();
+            break;
+
+            // Hide selected object
+        case VK_DELETE:
+            if (hasSelectedObject())
+            {
+                m_objectVisible[m_selectedObjectIndex] = false;
+                m_objects.GetObjects()[m_selectedObjectIndex].isVisible = false;
+                m_selectedObjectIndex = -1;
+                updateWindowTitle();
             }
             break;
 
-        case VK_OEM_COMMA:  // ,<
+        case VK_OEM_COMMA:
             m_lighting.ChangeLightEffectPrev();
             break;
-        case VK_OEM_PERIOD: // .>
+
+        case VK_OEM_PERIOD:
             m_lighting.ChangeLightEffectNext();
             break;
 
         case '1':
             m_lighting.ChangeLightEffect(1);
             break;
+
         case '2':
             m_lighting.ChangeLightEffect(2);
             break;
+
         case '0':
             m_lighting.ChangeLightEffect(0);
             break;
@@ -919,16 +1176,69 @@ private:
         const XMMATRIX& view,
         const XMMATRIX& proj,
         const XMFLOAT4& baseColor,
-        float uvScale, 
+        float uvScale,
         UINT cbSize)
     {
         ObjectConstants cb{};
-        XMStoreFloat4x4(&cb.world, XMMatrixTranspose(world));
-        XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(world * view * proj));
+
+        XMMATRIX finalWorld = world;
+
+        if (index < ObjectCount && index < m_objects.GetObjects().size())
+        {
+            m_objectBaseColor[index] = baseColor;
+            m_objectBaseUvScale[index] = uvScale;
+
+            XMFLOAT3 offset = m_objectMoveOffset[index];
+            float rotY = m_objectRotationY[index];
+
+            XMFLOAT3 center = m_objects.GetObjects()[index].meshCenter;
+
+            XMMATRIX rotateAroundCenter =
+                XMMatrixTranslation(-center.x, -center.y, -center.z) *
+                XMMatrixRotationY(rotY) *
+                XMMatrixTranslation(center.x, center.y, center.z);
+
+            XMMATRIX move =
+                XMMatrixTranslation(offset.x, offset.y, offset.z);
+
+            finalWorld = rotateAroundCenter * world * move;
+
+            XMStoreFloat4x4(&m_objects.GetObjects()[index].worldMatrix, finalWorld);
+            m_objects.GetObjects()[index].isVisible = m_objectVisible[index];
+        }
+
+        XMFLOAT4 finalColor = baseColor;
+
+        // Permanent color change
+        if (index < ObjectCount && m_objectColorChanged[index])
+        {
+            finalColor = XMFLOAT4(
+                baseColor.x * 1.2f,
+                baseColor.y * 0.7f,
+                baseColor.z * 1.6f,
+                baseColor.w
+            );
+        }
+
+        // Selected object highlight
+        if (static_cast<int>(index) == m_selectedObjectIndex)
+        {
+            finalColor = XMFLOAT4(
+                finalColor.x * 1.5f,
+                finalColor.y * 1.2f,
+                finalColor.z * 0.6f,
+                finalColor.w
+            );
+        }
+
+        XMStoreFloat4x4(&cb.world, XMMatrixTranspose(finalWorld));
+        XMStoreFloat4x4(&cb.worldViewProj, XMMatrixTranspose(finalWorld * view * proj));
+
         cb.lightCount = m_lighting.GetLightCount();
         m_lighting.UpdateLights(cb.lights, cb.lightCount);
+
         cb.cameraPosition = m_camera.GetPosition();
-        cb.baseColor = baseColor;
+        cb.baseColor = finalColor;
         cb.uvScale = uvScale;
         cb.isLightCone = m_objects.GetObjects()[index].isLightCone;
 
