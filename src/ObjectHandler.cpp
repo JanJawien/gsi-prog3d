@@ -284,7 +284,6 @@ void ObjectHandler::LoadAllObjects()
     LoadObject("Assets/beer2.obj", L"Assets/fabric.dds", 35);
     LoadObject("Assets/bar-sign.obj", L"Assets/energy.dds", 36);
     LoadObject("Assets/disco-ball.obj", L"Assets/disco-ball.dds", 37);
-    LoadObject("Assets/dance-floor.obj", L"Assets/disco-ball.dds", 38);
 }
 
 int ObjectHandler::GetClickedObjectIndex(
