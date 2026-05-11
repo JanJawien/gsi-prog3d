@@ -17,6 +17,7 @@ struct Vertex
 };
 
 const int MAX_LIGHTS = 16;
+
 struct Light
 {
     XMFLOAT3 position;
@@ -28,9 +29,9 @@ struct Light
     XMFLOAT3 direction;
     float spotPower;
 
-    int type; 
-    int isEnabled;  
-    XMFLOAT2 pad;   
+    int type;
+    int isEnabled;
+    XMFLOAT2 pad;
 };
 
 struct alignas(256) ObjectConstants
@@ -74,9 +75,21 @@ struct ObjectRenderData
 
     D3D12_GPU_DESCRIPTOR_HANDLE srvGpu{};
 
-    XMFLOAT3 meshCenter;
-    bool isTransparent;
-    bool isLightCone;
+    XMFLOAT3 meshCenter = { 0.0f, 0.0f, 0.0f };
+
+    //macierz świata obiektu.
+    //ray picking, żeby sprawdzać realną geometrię po transformacji
+    XMFLOAT4X4 worldMatrix =
+    {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+
+    bool isTransparent = false;
+    bool isLightCone = false;
+    bool isVisible = true;
 };
 
 struct DDS_PIXELFORMAT
