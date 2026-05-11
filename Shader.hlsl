@@ -46,10 +46,6 @@ float3 ComputeSpotlightCone(
     Light L,
     float3 worldPos)
 {
-    // only spotlights
-    if (L.type != 1 || L.isEnabled == 0)
-        return float3(0, 0, 0);
-
     float3 sd = normalize(L.direction);
 
     float3 fromLight = worldPos - L.position;
@@ -168,6 +164,10 @@ float4 PSMain(PSInput input) : SV_TARGET
     float3 ambient = float3(0.15f, 0.15f, 0.15f);
 
     float3 finalColor = texColor.rgb * baseColor.rgb * (ambient + totalLight);
-
-    return float4(finalColor, texColor.a);
+    float finalAlpha = texColor.a;
+    if(isLightCone != 0) {
+        finalColor = totalLight;
+        finalAlpha *= (finalColor.x + finalColor.y + finalColor.z) / 2.0f;
+    }
+    return float4(finalColor, finalAlpha);
 }
