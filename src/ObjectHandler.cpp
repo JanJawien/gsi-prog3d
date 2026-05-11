@@ -284,6 +284,30 @@ void ObjectHandler::LoadAllObjects()
     LoadObject("Assets/beer2.obj", L"Assets/fabric.dds", 35);
     LoadObject("Assets/bar-sign.obj", L"Assets/energy.dds", 36);
     LoadObject("Assets/disco-ball.obj", L"Assets/disco-ball.dds", 37);
+
+    // Table 1
+    LoadObject("Assets/table-round.obj", L"Assets/table-round.dds", 38);
+    LoadObject("Assets/couch-round.obj", L"Assets/couch-round.dds", 39);
+    LoadObject("Assets/table-glasses-1.obj", L"Assets/glass-white.dds", 40, true);
+    LoadObject("Assets/table-glasses-2.obj", L"Assets/glass-blue.dds", 41, true);
+    LoadObject("Assets/table-bottles-2.obj", L"Assets/glass-white.dds", 42, true);
+    // Table 2
+    LoadObject("Assets/table-round.obj", L"Assets/table-round.dds", 43);
+    LoadObject("Assets/couch-round.obj", L"Assets/couch-round.dds", 44);
+    LoadObject("Assets/table-glasses-2.obj", L"Assets/glass-green.dds", 45, true);
+    // Table 3
+    LoadObject("Assets/table-round.obj", L"Assets/table-round.dds", 46);
+    LoadObject("Assets/couch-round.obj", L"Assets/couch-round.dds", 47);
+    LoadObject("Assets/table-glasses-1.obj", L"Assets/glass-blue.dds", 48, true);
+    LoadObject("Assets/table-bottles-1.obj", L"Assets/glass-white.dds", 49, true);
+    // Table 4
+    LoadObject("Assets/table-round.obj", L"Assets/table-round.dds", 50);
+    LoadObject("Assets/couch-round.obj", L"Assets/couch-round.dds", 51);
+    LoadObject("Assets/table-glasses-2.obj", L"Assets/glass-white.dds", 52, true);
+    // Table 5
+    LoadObject("Assets/table-round.obj", L"Assets/table-round.dds", 53);
+    LoadObject("Assets/couch-round.obj", L"Assets/couch-round.dds", 54);
+    LoadObject("Assets/table-glasses-1.obj", L"Assets/glass-blue.dds", 55, true);
 }
 
 int ObjectHandler::GetClickedObjectIndex(

@@ -1168,9 +1168,9 @@ private:
         // Bar
         UpdateObjectCB(31, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 1.0f, cbSize);
         // Door
-        UpdateObjectCB(32, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.5f, cbSize);
+        UpdateObjectCB(32, XMMatrixTranslation(0.0f, 0.0f, 1.0f), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.5f, cbSize);
         // Sofa
-        UpdateObjectCB(33, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        //UpdateObjectCB(33, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Beer bottles
         UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         UpdateObjectCB(35, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
@@ -1178,9 +1178,42 @@ private:
         UpdateObjectCB(36, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Disco ball
         UpdateObjectCB(37, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // Table 1
+        XMMATRIX mT = XMMatrixTranslation(-8.0f, 0.0f, -3.5f);
+        XMMATRIX mR = XMMatrixRotationY(-90.0f / 180.0f*3.14159);
+        UpdateObjectCB(38, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(39, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(40, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(41, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(42, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // Table 2
+        mT = XMMatrixTranslation(-5.0f, 0.0f, -3.5f);
+        mR = XMMatrixRotationY(-90.0f / 180.0f * 3.14159);
+        UpdateObjectCB(43, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(44, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(45, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // Table 3
+        mT = XMMatrixTranslation(-2.0f, 0.0f, -3.5f);
+        mR = XMMatrixRotationY(-90.0f / 180.0f * 3.14159);
+        UpdateObjectCB(46, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(47, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(48, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(49, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // Table 4
+        mT = XMMatrixTranslation(-8.0f, 0.0f, -1.0f);
+        mR = XMMatrixRotationY(90.0f / 180.0f * 3.14159);
+        UpdateObjectCB(50, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(51, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(52, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // Table 5
+        mT = XMMatrixTranslation(-5.0f, 0.0f, -1.0f);
+        mR = XMMatrixRotationY(90.0f / 180.0f * 3.14159);
+        UpdateObjectCB(53, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(54, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        UpdateObjectCB(55, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
 
         // Dynamic duplicated objects reuse existing mesh/texture data but get their own transform and constant buffer.
-        for (UINT i = 39; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
+        for (UINT i = 56; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
         {
             XMFLOAT4 color = m_objectBaseColor[i];
             float uvScale = m_objectBaseUvScale[i];
