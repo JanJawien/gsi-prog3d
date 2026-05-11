@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 223;
+    static const UINT ObjectCount = 222;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -1178,12 +1178,6 @@ private:
         UpdateObjectCB(36, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Disco ball
         UpdateObjectCB(37, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-
-        // Dance floor
-        int rotationStep = static_cast<int>(totalTime) % 4;
-        m_objectRotationY[38] = rotationStep * XM_PIDIV2;
-        UpdateObjectCB(38, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.0095f, cbSize);
-        UpdateObjectCB(38, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.0095f, cbSize);
 
         // Dynamic duplicated objects reuse existing mesh/texture data but get their own transform and constant buffer.
         for (UINT i = 39; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
