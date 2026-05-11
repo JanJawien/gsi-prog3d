@@ -257,25 +257,25 @@ void ObjectHandler::LoadAllObjects()
     LoadObject("Assets/lights-railing-bottom.obj", L"Assets/railing.dds", 11, true);
     LoadObject("Assets/lights-railing-front.obj", L"Assets/railing.dds", 12, true);
 
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 13, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 14, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 15, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 16, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 17, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 18, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 19, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 20, true, true);
-    LoadObject("Assets/lightCone-narrow.obj", L"Assets/transp.dds", 21, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 13, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 14, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 15, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 16, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 17, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 18, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 19, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 20, true, true);
+    LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 21, true, true);
 
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 22);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 23);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 24);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 25);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 26);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 27);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 28);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 29);
-    LoadObject("Assets/lamp-ceiling.obj", L"Assets/black.dds", 30);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 22);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 23);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 24);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 25);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 26);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 27);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 28);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 29);
+    LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 30);
 
     LoadObject("Assets/bar.obj", L"Assets/wood.dds", 31);
     LoadObject("Assets/door.obj", L"Assets/wood.dds", 32);
