@@ -83,7 +83,7 @@ private:
     static const UINT FrameCount = 2;
     static const UINT Width = 1280;
     static const UINT Height = 720;
-    static const UINT ObjectCount = 220;
+    static const UINT ObjectCount = 223;
 
     // Device Context 
     ComPtr<IDXGIFactory4> m_factory;
@@ -136,7 +136,7 @@ private:
     UINT m_discoFirstIndex = 0;
     UINT m_discoTileCount = 0;
 
-    // Wiêkszy parkiet
+    // WiÃªkszy parkiet
     static const UINT DiscoRows = 8;
     static const UINT DiscoCols = 9;
 
@@ -705,7 +705,7 @@ private:
 
         CreateMeshBuffers(obj);
 
-        // Bia³a tekstura 1x1, ¿eby nie by³o wzorków ani czarnych pasków
+        // BiaÂ³a tekstura 1x1, Â¿eby nie byÂ³o wzorkÃ³w ani czarnych paskÃ³w
         CreateSolidColorTexture(index, obj, 255, 255, 255, 255);
 
         m_objects.GetObjects().push_back(obj);
@@ -729,20 +729,20 @@ private:
         float gap = 0.08f;
         float step = tileSize + gap;
 
-        // Parkiet zaczyna siê bli¿ej sceny i idzie w stronê kamery.
-        // Jeœli bêdzie za blisko/za daleko, zmieniaj tylko startX.
+        // Parkiet zaczyna siÃª bliÂ¿ej sceny i idzie w stronÃª kamery.
+        // JeÅ“li bÃªdzie za blisko/za daleko, zmieniaj tylko startX.
         float startX = 0.55f;
 
         float totalX = DiscoRows * tileSize + (DiscoRows - 1) * gap;
         float totalZ = DiscoCols * tileSize + (DiscoCols - 1) * gap;
 
-        // centrowanie na szerokoœæ sali
+        // centrowanie na szerokoÅ“Ã¦ sali
         float startZ = -0.5f * totalZ + tileSize * 0.5f;
 
         float baseCenterX = startX + 0.5f * (totalX - tileSize);
         float baseCenterZ = startZ + 0.5f * (totalZ - tileSize);
 
-        // czarna p³yta pod spodem, ¿eby nie by³o widaæ zwyk³ej pod³ogi w szparach
+        // czarna pÂ³yta pod spodem, Â¿eby nie byÂ³o widaÃ¦ zwykÂ³ej podÂ³ogi w szparach
         AddDiscoBase(
             baseCenterX,
             0.020f,
@@ -843,47 +843,47 @@ private:
 
     void ApplySceneLayout()
     {
-        // Reset do czystego, bezkolizyjnego uk³adu (bazowe pozycje z plików .obj)
-        // oraz tylko kilka kontrolowanych kopii, ¿eby scena nie wygl¹da³a pusto.
+        // Reset do czystego, bezkolizyjnego ukÂ³adu (bazowe pozycje z plikÃ³w .obj)
+        // oraz tylko kilka kontrolowanych kopii, Â¿eby scena nie wyglÂ¹daÂ³a pusto.
 
         const XMFLOAT3 zero(0.0f, 0.0f, 0.0f);
 
-        // Rdzeñ sceny – bez zmian funkcjonalnych, tylko porz¹dkujemy transformacje
+        // RdzeÃ± sceny â€“ bez zmian funkcjonalnych, tylko porzÂ¹dkujemy transformacje
         SetObjectLayout(0, zero, 1.0f, 0.0f);  // room
         SetObjectLayout(1, zero, 1.0f, 0.0f);  // scene base / stage
         SetObjectLayout(3, zero, 1.0f, 0.0f);  // stairs
 
-        // DJ / scena jako punkt fokusowy – zostaje na froncie (pozycje z modelu)
+        // DJ / scena jako punkt fokusowy â€“ zostaje na froncie (pozycje z modelu)
         SetObjectLayout(4, zero, 1.0f, 0.0f);  // dj setup
         SetObjectLayout(5, zero, 1.0f, 0.0f);  // dj desk
 
-        // G³oœniki – bez powiêkszania i bez przesuwania, ¿eby nie wchodzi³y w œciany / parkiet
+        // GÂ³oÅ“niki â€“ bez powiÃªkszania i bez przesuwania, Â¿eby nie wchodziÂ³y w Å“ciany / parkiet
         SetObjectLayout(6, zero, 1.0f, 0.0f);
         SetObjectLayout(7, zero, 1.0f, 0.0f);
         SetObjectLayout(8, zero, 1.0f, 0.0f);
         SetObjectLayout(9, zero, 1.0f, 0.0f);
 
-        // Bar + drzwi + butelki – wracaj¹ do pozycji z modelu (bar przy œcianie, drzwi nieblokowane)
+        // Bar + drzwi + butelki â€“ wracajÂ¹ do pozycji z modelu (bar przy Å“cianie, drzwi nieblokowane)
         SetObjectLayout(31, zero, 1.0f, 0.0f);
         SetObjectLayout(32, zero, 1.0f, 0.0f);
         SetObjectLayout(34, zero, 1.0f, 0.0f);
         SetObjectLayout(35, zero, 1.0f, 0.0f);
 
-        // Strefa lounge – sofa zostaje w rogu, bez sztucznego skalowania
+        // Strefa lounge â€“ sofa zostaje w rogu, bez sztucznego skalowania
         SetObjectLayout(33, zero, 1.0f, 0.0f);
 
-        // Sto³y i krzes³a: strefa siedzenia wzd³u¿ jednej œciany.
-        // Bazowy zestaw zostaje tam, gdzie by³ w modelu, a dok³adamy tylko 1 kopiê,
-        // ¿eby zrobiæ drugi "cluster" bez wchodzenia na parkiet.
+        // StoÂ³y i krzesÂ³a: strefa siedzenia wzdÂ³uÂ¿ jednej Å“ciany.
+        // Bazowy zestaw zostaje tam, gdzie byÂ³ w modelu, a dokÂ³adamy tylko 1 kopiÃª,
+        // Â¿eby zrobiÃ¦ drugi "cluster" bez wchodzenia na parkiet.
         SetObjectLayout(2, zero, 1.0f, 0.0f);
 
         // Dodajemy kopie tylko raz (gdy scena ma jeszcze tylko bazowe obiekty 0..35).
         if (m_objects.GetObjects().size() == 36)
         {
-            // Drugi zestaw sto³ów/krzese³ – nadal przy tej samej œcianie, ale przesuniêty wzd³u¿ niej.
+            // Drugi zestaw stoÂ³Ã³w/krzeseÂ³ â€“ nadal przy tej samej Å“cianie, ale przesuniÃªty wzdÂ³uÂ¿ niej.
             AddObjectCopy(2, XMFLOAT3(1.2f, 0.0f, -2.6f), 1.0f, 180.0f, false);
 
-            // Druga sofa – tworzy bardziej czytelny k¹cik lounge przy œcianie (nie przy parkiecie).
+            // Druga sofa â€“ tworzy bardziej czytelny kÂ¹cik lounge przy Å“cianie (nie przy parkiecie).
             AddObjectCopy(33, XMFLOAT3(4.4f, 0.0f, 0.0f), 1.0f, 180.0f, false);
         }
     }
@@ -921,10 +921,10 @@ private:
 
         m_djDeskCenter = m_objects.GetObjects()[5].meshCenter;
 
-        // Najpierw ustawiamy layout g³ównych obiektów i dodajemy kopie
+        // Najpierw ustawiamy layout gÂ³Ã³wnych obiektÃ³w i dodajemy kopie
         ApplySceneLayout();
 
-        // Potem tworzymy disco floor, ¿eby by³ przed scen¹ i na œrodku
+        // Potem tworzymy disco floor, Â¿eby byÂ³ przed scenÂ¹ i na Å“rodku
         CreateDiscoFloor();
     }
 
@@ -1174,13 +1174,24 @@ private:
         // Beer bottles
         UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         UpdateObjectCB(35, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        // Bar sign
+        UpdateObjectCB(36, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        // Disco ball
+        UpdateObjectCB(37, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+
+        // Dance floor
+        int rotationStep = static_cast<int>(totalTime) % 4;
+        m_objectRotationY[38] = rotationStep * XM_PIDIV2;
+        UpdateObjectCB(38, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.0095f, cbSize);
+        UpdateObjectCB(38, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.0095f, cbSize);
+
         // Dynamic duplicated objects reuse existing mesh/texture data but get their own transform and constant buffer.
-        for (UINT i = 36; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
+        for (UINT i = 39; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
         {
             XMFLOAT4 color = m_objectBaseColor[i];
             float uvScale = m_objectBaseUvScale[i];
 
-            // Czarna p³yta pod parkietem
+            // Czarna pÂ³yta pod parkietem
             if (i == m_discoBaseIndex)
             {
                 color = m_discoFloorOn
