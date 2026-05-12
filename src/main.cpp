@@ -121,7 +121,6 @@ private:
     std::array<DirectX::XMFLOAT3, ObjectCount> m_objectMoveOffset{};
     std::array<float, ObjectCount> m_objectRotationY{};
     std::array<bool, ObjectCount> m_objectVisible{};
-    std::array<bool, ObjectCount> m_objectColorChanged{};
     std::array<DirectX::XMFLOAT4, ObjectCount> m_objectBaseColor{};
     std::array<float, ObjectCount> m_objectBaseUvScale{};
     std::array<float, ObjectCount> m_objectScale{};
@@ -388,7 +387,6 @@ private:
         m_device->CreateDepthStencilView(m_depthStencil.Get(), nullptr, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
     }
     
-
     void LoadAssets()
     {
         D3D12_DESCRIPTOR_RANGE range = {};
@@ -680,7 +678,6 @@ private:
         m_objectMoveOffset[index] = XMFLOAT3(0.0f, 0.0f, 0.0f);
         m_objectRotationY[index] = 0.0f;
         m_objectVisible[index] = true;
-        m_objectColorChanged[index] = false;
         m_objectBaseColor[index] = XMFLOAT4(0.05f, 0.05f, 0.05f, 1.0f);
         m_objectBaseUvScale[index] = 1.0f;
         m_objectScale[index] = 1.0f;
@@ -713,7 +710,6 @@ private:
         m_objectMoveOffset[index] = XMFLOAT3(0.0f, 0.0f, 0.0f);
         m_objectRotationY[index] = 0.0f;
         m_objectVisible[index] = true;
-        m_objectColorChanged[index] = false;
         m_objectBaseColor[index] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
         m_objectBaseUvScale[index] = 1.0f;
         m_objectScale[index] = 1.0f;
@@ -788,105 +784,7 @@ private:
                 m_discoColors[i] = RandomDiscoColor();
         }
     }
-    void SetObjectLayout(
-        UINT index,
-        XMFLOAT3 offset,
-        float scale = 1.0f,
-        float rotYDegrees = 0.0f)
-    {
-        if (index >= ObjectCount)
-            return;
-
-        m_objectMoveOffset[index] = offset;
-        m_objectScale[index] = scale;
-        m_objectRotationY[index] = XMConvertToRadians(rotYDegrees);
-        m_objectVisible[index] = true;
-
-        if (index < m_objects.GetObjects().size())
-            m_objects.GetObjects()[index].isVisible = true;
-    }
-
-    UINT AddObjectCopy(
-        UINT sourceIndex,
-        XMFLOAT3 offset,
-        float scale = 1.0f,
-        float rotYDegrees = 0.0f,
-        bool changedColor = false)
-    {
-        if (sourceIndex >= m_objects.GetObjects().size())
-            return UINT_MAX;
-
-        if (m_objects.GetObjects().size() >= ObjectCount)
-            return UINT_MAX;
-
-        UINT newIndex = static_cast<UINT>(m_objects.GetObjects().size());
-
-        ObjectRenderData copy = m_objects.GetObjects()[sourceIndex];
-        copy.isVisible = true;
-
-        XMStoreFloat4x4(&copy.worldMatrix, XMMatrixIdentity());
-
-        m_objects.GetObjects().push_back(copy);
-
-        m_objectMoveOffset[newIndex] = offset;
-        m_objectRotationY[newIndex] = XMConvertToRadians(rotYDegrees);
-        m_objectVisible[newIndex] = true;
-        m_objectColorChanged[newIndex] = changedColor;
-        m_objectBaseColor[newIndex] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-        m_objectBaseUvScale[newIndex] = 1.0f;
-        m_objectScale[newIndex] = scale;
-
-        m_objects.GetObjects()[newIndex].isVisible = true;
-
-        return newIndex;
-    }
-
-    void ApplySceneLayout()
-    {
-        // Reset do czystego, bezkolizyjnego uk³adu (bazowe pozycje z plików .obj)
-        // oraz tylko kilka kontrolowanych kopii, ¿eby scena nie wygl¹da³a pusto.
-
-        const XMFLOAT3 zero(0.0f, 0.0f, 0.0f);
-
-        // Rdzeñ sceny – bez zmian funkcjonalnych, tylko porz¹dkujemy transformacje
-        SetObjectLayout(0, zero, 1.0f, 0.0f);  // room
-        SetObjectLayout(1, zero, 1.0f, 0.0f);  // scene base / stage
-        SetObjectLayout(3, zero, 1.0f, 0.0f);  // stairs
-
-        // DJ / scena jako punkt fokusowy – zostaje na froncie (pozycje z modelu)
-        SetObjectLayout(4, zero, 1.0f, 0.0f);  // dj setup
-        SetObjectLayout(5, zero, 1.0f, 0.0f);  // dj desk
-
-        // G³oœniki – bez powiêkszania i bez przesuwania, ¿eby nie wchodzi³y w œciany / parkiet
-        SetObjectLayout(6, zero, 1.0f, 0.0f);
-        SetObjectLayout(7, zero, 1.0f, 0.0f);
-        SetObjectLayout(8, zero, 1.0f, 0.0f);
-        SetObjectLayout(9, zero, 1.0f, 0.0f);
-
-        // Bar + drzwi + butelki – wracaj¹ do pozycji z modelu (bar przy œcianie, drzwi nieblokowane)
-        SetObjectLayout(31, zero, 1.0f, 0.0f);
-        SetObjectLayout(32, zero, 1.0f, 0.0f);
-        SetObjectLayout(34, zero, 1.0f, 0.0f);
-        SetObjectLayout(35, zero, 1.0f, 0.0f);
-
-        // Strefa lounge – sofa zostaje w rogu, bez sztucznego skalowania
-        SetObjectLayout(33, zero, 1.0f, 0.0f);
-
-        // Sto³y i krzes³a: strefa siedzenia wzd³u¿ jednej œciany.
-        // Bazowy zestaw zostaje tam, gdzie by³ w modelu, a dok³adamy tylko 1 kopiê,
-        // ¿eby zrobiæ drugi "cluster" bez wchodzenia na parkiet.
-        SetObjectLayout(2, zero, 1.0f, 0.0f);
-
-        // Dodajemy kopie tylko raz (gdy scena ma jeszcze tylko bazowe obiekty 0..35).
-        if (m_objects.GetObjects().size() == 36)
-        {
-            // Drugi zestaw sto³ów/krzese³ – nadal przy tej samej œcianie, ale przesuniêty wzd³u¿ niej.
-            AddObjectCopy(2, XMFLOAT3(1.2f, 0.0f, -2.6f), 1.0f, 180.0f, false);
-
-            // Druga sofa – tworzy bardziej czytelny k¹cik lounge przy œcianie (nie przy parkiecie).
-            AddObjectCopy(33, XMFLOAT3(4.4f, 0.0f, 0.0f), 1.0f, 180.0f, false);
-        }
-    }
+    
     void LoadModels()
     {
         m_objects.SetMeshBufferFunc([this](ObjectRenderData& obj)
@@ -906,7 +804,6 @@ private:
             m_objectMoveOffset[i] = XMFLOAT3(0.0f, 0.0f, 0.0f);
             m_objectRotationY[i] = 0.0f;
             m_objectVisible[i] = true;
-            m_objectColorChanged[i] = false;
             m_objectBaseColor[i] = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
             m_objectBaseUvScale[i] = 1.0f;
             m_objectScale[i] = 1.0f;
@@ -921,14 +818,10 @@ private:
 
         m_djDeskCenter = m_objects.GetObjects()[5].meshCenter;
 
-        // Najpierw ustawiamy layout g³ównych obiektów i dodajemy kopie
-        ApplySceneLayout();
-
         // Potem tworzymy disco floor, ¿eby by³ przed scen¹ i na œrodku
         CreateDiscoFloor();
     }
 
-    
     void CreateMeshBuffers(ObjectRenderData& obj)
     {
         const UINT vbSize = static_cast<UINT>(obj.mesh.vertices.size() * sizeof(Vertex));
@@ -1385,7 +1278,7 @@ private:
             {
                 std::wstring title =
                     L"Selected: " + std::to_wstring(m_selectedObjectIndex) +
-                    L" | E select/deselect | IJKL/UO move | R rotate | C color | M duplicate | N bottle | DEL hide";
+                    L" | E select/deselect | IJKL/UO move | R rotate | M duplicate | DEL hide";
 
                 SetWindowText(m_hwnd, title.c_str());
             };
@@ -1413,57 +1306,14 @@ private:
                 m_objects.GetObjects()[newIndex].isVisible = true;
 
                 m_objectMoveOffset[newIndex] = m_objectMoveOffset[m_selectedObjectIndex];
-                m_objectMoveOffset[newIndex].x += 0.6f;
-                m_objectMoveOffset[newIndex].z += 0.6f;
+                m_objectMoveOffset[newIndex].x += 0.5f;
+                m_objectMoveOffset[newIndex].z += 0.5f;
 
                 m_objectRotationY[newIndex] = m_objectRotationY[m_selectedObjectIndex];
-                m_objectColorChanged[newIndex] = m_objectColorChanged[m_selectedObjectIndex];
 
                 m_objectBaseColor[newIndex] = m_objectBaseColor[m_selectedObjectIndex];
                 m_objectBaseUvScale[newIndex] = m_objectBaseUvScale[m_selectedObjectIndex];
                 m_objectScale[newIndex] = m_objectScale[m_selectedObjectIndex];
-
-                m_selectedObjectIndex = static_cast<int>(newIndex);
-                updateWindowTitle();
-            };
-
-        auto addBottleOnBar = [this, &updateWindowTitle]()
-            {
-                const int bottleSourceIndex = 34;
-
-                if (bottleSourceIndex >= static_cast<int>(m_objects.GetObjects().size()))
-                    return;
-
-                if (m_objects.GetObjects().size() >= ObjectCount)
-                    return;
-
-                UINT newIndex = static_cast<UINT>(m_objects.GetObjects().size());
-
-                ObjectRenderData copy = m_objects.GetObjects()[bottleSourceIndex];
-                copy.isVisible = true;
-                XMStoreFloat4x4(&copy.worldMatrix, XMMatrixIdentity());
-
-                m_objects.GetObjects().push_back(copy);
-
-                m_objectVisible[newIndex] = true;
-                m_objects.GetObjects()[newIndex].isVisible = true;
-
-                // Small offsets so new bottles do not appear exactly in the same place.
-                float sideOffset = static_cast<float>(m_addedBottleCount % 5) * 0.18f;
-                float rowOffset = static_cast<float>(m_addedBottleCount / 5) * 0.18f;
-
-                m_objectMoveOffset[newIndex] = m_objectMoveOffset[bottleSourceIndex];
-                m_objectMoveOffset[newIndex].x += sideOffset;
-                m_objectMoveOffset[newIndex].z += rowOffset;
-
-                m_objectRotationY[newIndex] = 0.0f;
-                m_objectColorChanged[newIndex] = false;
-
-                m_objectBaseColor[newIndex] = m_objectBaseColor[bottleSourceIndex];
-                m_objectBaseUvScale[newIndex] = m_objectBaseUvScale[bottleSourceIndex];
-                m_objectScale[newIndex] = 1.25f;
-
-                m_addedBottleCount++;
 
                 m_selectedObjectIndex = static_cast<int>(newIndex);
                 updateWindowTitle();
@@ -1491,7 +1341,7 @@ private:
             PostQuitMessage(0);
             break;
 
-            // Select / deselect object
+        // Select / deselect object
         case 'E':
         {
             int clickedObject = m_objects.GetClickedObjectIndex(
@@ -1564,22 +1414,10 @@ private:
                 m_objectRotationY[m_selectedObjectIndex] += rotateStep;
             break;
 
-            // Change selected object appearance
-        case 'C':
-            if (hasSelectedObject())
-                m_objectColorChanged[m_selectedObjectIndex] =
-                !m_objectColorChanged[m_selectedObjectIndex];
-            break;
-
             // Duplicate selected object
         case 'M':
             if (hasSelectedObject())
                 duplicateSelectedObject();
-            break;
-
-            // Add new bottle
-        case 'N':
-            addBottleOnBar();
             break;
 
             // Hide selected object
@@ -1664,17 +1502,6 @@ private:
         }
 
         XMFLOAT4 finalColor = baseColor;
-
-        // Permanent color change
-        if (index < ObjectCount && m_objectColorChanged[index])
-        {
-            finalColor = XMFLOAT4(
-                baseColor.x * 1.2f,
-                baseColor.y * 0.7f,
-                baseColor.z * 1.6f,
-                baseColor.w
-            );
-        }
 
         // Selected object highlight
         if (static_cast<int>(index) == m_selectedObjectIndex)
