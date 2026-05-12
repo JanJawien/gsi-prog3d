@@ -125,7 +125,6 @@ private:
     std::array<float, ObjectCount> m_objectBaseUvScale{};
     std::array<float, ObjectCount> m_objectScale{};
 
-    int m_addedBottleCount = 0;
     // Disco floor
     bool m_discoFloorOn = true;
     float m_discoTimer = 0.0f;
@@ -135,7 +134,6 @@ private:
     UINT m_discoFirstIndex = 0;
     UINT m_discoTileCount = 0;
 
-    // Wiêkszy parkiet
     static const UINT DiscoRows = 8;
     static const UINT DiscoCols = 9;
 
@@ -664,9 +662,6 @@ private:
         ObjectRenderData obj{};
         obj.mesh = CreateQuadMesh(centerX, y, centerZ, sizeX, sizeZ);
         obj.meshCenter = XMFLOAT3(centerX, y, centerZ);
-        obj.isTransparent = false;
-        obj.isLightCone = false;
-        obj.isVisible = true;
 
         XMStoreFloat4x4(&obj.worldMatrix, XMMatrixIdentity());
 
@@ -1038,10 +1033,7 @@ private:
         // DJ setup
         UpdateObjectCB(4, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // DJ desk
-
-
         UpdateObjectCB(5, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-
         // Speakers
         UpdateObjectCB(6, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         UpdateObjectCB(7, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
@@ -1057,18 +1049,17 @@ private:
             UpdateObjectCB(13 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
             UpdateObjectCB(22 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         }
-
         // Bar
-        UpdateObjectCB(31, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 1.0f, cbSize);
+        //UpdateObjectCB(31, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 1.0f, cbSize);
         // Door
         UpdateObjectCB(32, XMMatrixTranslation(0.0f, 0.0f, 1.0f), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.5f, cbSize);
         // Sofa
         //UpdateObjectCB(33, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Beer bottles
-        UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
-        UpdateObjectCB(35, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        //UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        //UpdateObjectCB(35, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Bar sign
-        UpdateObjectCB(36, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
+        //UpdateObjectCB(36, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Disco ball
         UpdateObjectCB(37, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         // Table 1
