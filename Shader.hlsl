@@ -167,7 +167,7 @@ float4 PSMain(PSInput input) : SV_TARGET
     float finalAlpha = texColor.a;
     if(isLightCone != 0) {
         finalColor = totalLight;
-        finalAlpha *= (finalColor.x + finalColor.y + finalColor.z) / 2.0f;
+        finalAlpha *= (finalColor.x + finalColor.y + finalColor.z) / 3.0f * saturate(dot(normal, viewDir)) * 2.0f;
     }
     return float4(finalColor, finalAlpha);
 }

@@ -1340,6 +1340,9 @@ private:
                 m_camera.GetForward()
             );
 
+            // Dont select room model
+            if (clickedObject == 0) break;
+
             if (clickedObject == m_selectedObjectIndex)
             {
                 m_selectedObjectIndex = -1;
