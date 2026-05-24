@@ -2,6 +2,7 @@
 .vs/
 *.user
 UpgradeLog.htm
+packages/
 
 # Build outputs
 bin/

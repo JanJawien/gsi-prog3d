@@ -16,7 +16,7 @@ private:
     XMFLOAT3 sceneLightBaseColor = {1.0, 1.0, 1.0};
 
     int lightEffectIdx = 0;
-    int lightEffectBPM = 120;
+    int lightEffectBPM = 135;
     int lightEffectPeriod = 0;
     float lightEffectStartTime = -1.0;
     std::function<float(float, float, int)> angVFunc;

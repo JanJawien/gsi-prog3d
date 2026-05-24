@@ -3,6 +3,7 @@
 #include "LightHandler.h" 
 #include "Camera.h"
 
+#include <Audio.h>
 #include <windows.h>
 #include <wrl.h>
 #include <shellapi.h>
@@ -40,6 +41,7 @@ public:
         LoadPipeline();
         LoadAssets();
         LoadModels();
+        InitAudio();
         return true;
     }
 
@@ -108,7 +110,12 @@ private:
 
     Camera m_camera;
 
-
+    // Audio engine
+    std::unique_ptr<AudioEngine> m_audioEngine;
+    std::unique_ptr<SoundEffect> m_music;
+    std::unique_ptr<SoundEffectInstance> m_musicInstance;
+    AudioListener m_listener;
+    AudioEmitter m_emitter;
 
     bool m_djDeskGlowOn = false;
     bool m_djDeskRotateOn = false;
@@ -503,6 +510,27 @@ private:
 
         ThrowIfFailed(m_constantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&m_cbvDataBegin)));
         WaitForGpu();
+    }
+
+    void InitAudio()
+    {
+        CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+        m_audioEngine = std::make_unique<AudioEngine>();
+        m_music = std::make_unique<SoundEffect>(
+            m_audioEngine.get(),
+            L"Assets/music0.wav"
+        );
+        m_musicInstance = m_music->CreateInstance(
+            SoundEffectInstance_Use3D
+        );
+
+        // listener = camera
+        m_listener.SetPosition(XMFLOAT3(0, 0, 0));
+        m_emitter.SetPosition(XMFLOAT3(8, 2, 0));
+        m_musicInstance->Apply3D(m_listener, m_emitter);
+
+        m_musicInstance->Play();
     }
 
     // ----------------------------------------------------------------------------------
@@ -1019,6 +1047,11 @@ private:
             static_cast<float>(Width) / static_cast<float>(Height),
             0.1f,
             200.0f);
+
+        // Update audio
+        m_audioEngine->Update();
+        m_listener.SetPosition(m_camera.GetPosition());
+        m_musicInstance->Apply3D(m_listener, m_emitter);
 
         const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u; 
         
