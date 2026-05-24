@@ -116,6 +116,9 @@ private:
     std::unique_ptr<SoundEffectInstance> m_musicInstance;
     AudioListener m_listener;
     AudioEmitter m_emitter;
+    std::vector<int> musicTempo = { 135, 120 };
+    std::vector<int> musicLightEffect = { 5, 3 };
+    int m_currentMusicIndex = 0;
 
     bool m_djDeskGlowOn = false;
     bool m_djDeskRotateOn = false;
@@ -528,9 +531,6 @@ private:
         // listener = camera
         m_listener.SetPosition(XMFLOAT3(0, 0, 0));
         m_emitter.SetPosition(XMFLOAT3(8, 2, 0));
-        m_musicInstance->Apply3D(m_listener, m_emitter);
-
-        m_musicInstance->Play();
     }
 
     // ----------------------------------------------------------------------------------
@@ -1343,6 +1343,26 @@ private:
                 updateWindowTitle();
             };
 
+        auto changeMusic = [this](int index) {
+                if (index < 0) return;
+                if (index >= musicTempo.size()) return;
+                m_currentMusicIndex = index;
+                auto name = L"Assets/music" + std::to_wstring(index) + L".wav";
+
+                m_musicInstance->Stop();
+                m_music = std::make_unique<SoundEffect>(
+                    m_audioEngine.get(),
+                    name.c_str()
+                );
+                m_musicInstance = m_music->CreateInstance(
+                    SoundEffectInstance_Use3D
+                );
+                m_musicInstance->Play();
+
+                m_lighting.SetTempo(musicTempo[index]);
+                m_lighting.ChangeLightEffect(musicLightEffect[index]);
+            };
+
         switch (wParam)
         {
         case VK_SPACE:
@@ -1355,6 +1375,17 @@ private:
 
         case VK_DOWN:
             m_lighting.RemoveSceneLight();
+            break;
+
+        case VK_LEFT:
+            // if laptop selected, prev song
+            if (m_selectedObjectIndex == 4)
+                changeMusic(m_currentMusicIndex - 1);
+            break;
+
+        case VK_RIGHT:
+            if (m_selectedObjectIndex == 4)
+                changeMusic(m_currentMusicIndex + 1);
             break;
 
         case 'B':

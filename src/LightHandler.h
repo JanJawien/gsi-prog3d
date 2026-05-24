@@ -31,6 +31,9 @@ public:
     // Constructor
     LightHandler();
 
+    // Setters
+    void SetTempo(int tempo) { lightEffectBPM = tempo; }
+
     // Getters
     int GetLightCount();
     XMMATRIX GetSpotlightPos(int idx);

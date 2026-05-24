@@ -218,7 +218,7 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
             l.direction = { -1.0f, -1.0f, l.position.z / 24 };
             l.isEnabled = true;
         }
-        lightEffectPeriod = 1;
+        lightEffectPeriod = 2;
         angVFunc = NULL;
         angHFunc = NULL;
         colorFunc = [](float z, float t, int i) {
@@ -253,7 +253,7 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
 
     case 5: // BLink with random rot toward center
         for (auto& l : lightsScene) {
-            l.color = { 1.0f, 1.0f, 1.0f };
+            l.color = { 1.0f, 1.0f, 0.0f };
             l.direction = { -1.0f, -1.0f, 0.0f };
             l.isEnabled = true;
         }
@@ -261,7 +261,7 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
         angVFunc = [](float z, float t, int i) { return 15.0f; };
         angHFunc = [](float z, float t, int i) { return (10.0f - 60.0f * sin(1.57f+ 8*floor(t*4))) * z/3; };
         colorFunc = [](float z, float t, int i) {
-            if (((int)(t*8))%2 == 1) return XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+            if (((int)(t*8))%2 == 1) return FloatToHue(0.25f*floor(t*4));
             else return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
             };
         break;
