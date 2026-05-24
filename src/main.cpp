@@ -1350,6 +1350,10 @@ private:
                 auto name = L"Assets/music" + std::to_wstring(index) + L".wav";
 
                 m_musicInstance->Stop();
+                m_audioEngine->Update();
+                m_musicInstance.reset();
+                m_music.reset();
+
                 m_music = std::make_unique<SoundEffect>(
                     m_audioEngine.get(),
                     name.c_str()
@@ -1393,6 +1397,14 @@ private:
             break;
 
         case VK_ESCAPE:
+            m_musicInstance->Stop();
+            m_audioEngine->Update();
+            m_musicInstance.reset();
+            m_music.reset();
+            m_audioEngine->Suspend();
+            m_audioEngine.reset();
+            CoUninitialize();
+            
             PostQuitMessage(0);
             break;
 
