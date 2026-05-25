@@ -744,30 +744,28 @@ private:
         m_discoFirstIndex = 0;
         m_discoTileCount = 0;
 
-        float tileSize = 0.72f;
-        float gap = 0.08f;
+        float tileSize = 0.62f;
+        float gap = 0.07f;
         float step = tileSize + gap;
 
-        // Parkiet zaczyna siê bli¿ej sceny i idzie w stronê kamery.
-        // Jeœli bêdzie za blisko/za daleko, zmieniaj tylko startX.
-        float startX = 0.55f;
+        // Parkiet lekko mniejszy i bardziej na środku sali.
+        // X idzie od sceny w stronę kamery, Z to szerokość sali.
+        float startX = 0.35f;
 
         float totalX = DiscoRows * tileSize + (DiscoRows - 1) * gap;
         float totalZ = DiscoCols * tileSize + (DiscoCols - 1) * gap;
 
-        // centrowanie na szerokoœæ sali
         float startZ = -0.5f * totalZ + tileSize * 0.5f;
 
         float baseCenterX = startX + 0.5f * (totalX - tileSize);
         float baseCenterZ = startZ + 0.5f * (totalZ - tileSize);
 
-        // czarna p³yta pod spodem, ¿eby nie by³o widaæ zwyk³ej pod³ogi w szparach
         AddDiscoBase(
             baseCenterX,
             0.020f,
             baseCenterZ,
-            totalX + 0.40f,
-            totalZ + 0.40f
+            totalX + 0.35f,
+            totalZ + 0.35f
         );
 
         m_discoFirstIndex = static_cast<UINT>(m_objects.GetObjects().size());
@@ -839,9 +837,17 @@ private:
             obj.isVisible = true;
         }
 
+        // Ukrywamy stary, zbiorczy model stolików i krzeseł.
+        // Nie usuwamy go z ObjectHandler.cpp, bo wtedy przesunęłyby się indeksy obiektów.
+        if (m_objects.GetObjects().size() > 2)
+        {
+            m_objectVisible[2] = false;
+            m_objects.GetObjects()[2].isVisible = false;
+        }
+
         m_djDeskCenter = m_objects.GetObjects()[5].meshCenter;
 
-        // Potem tworzymy disco floor, ¿eby by³ przed scen¹ i na œrodku
+        // Potem tworzymy disco floor, żeby był przed sceną i na środku
         CreateDiscoFloor();
     }
 
@@ -1095,39 +1101,53 @@ private:
         //UpdateObjectCB(36, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
         // Disco ball
         UpdateObjectCB(37, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        // Table 1
-        XMMATRIX mT = XMMatrixTranslation(-8.0f, 0.0f, -3.5f);
-        XMMATRIX mR = XMMatrixRotationY(-90.0f / 180.0f*3.14159);
-        UpdateObjectCB(38, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(39, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(40, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(41, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(42, mR*mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        // Table 2
-        mT = XMMatrixTranslation(-5.0f, 0.0f, -3.5f);
-        mR = XMMatrixRotationY(-90.0f / 180.0f * 3.14159);
-        UpdateObjectCB(43, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(44, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(45, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        // Table 3
-        mT = XMMatrixTranslation(-2.0f, 0.0f, -3.5f);
-        mR = XMMatrixRotationY(-90.0f / 180.0f * 3.14159);
-        UpdateObjectCB(46, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(47, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(48, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(49, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        // Table 4
-        mT = XMMatrixTranslation(-8.0f, 0.0f, -1.0f);
-        mR = XMMatrixRotationY(90.0f / 180.0f * 3.14159);
-        UpdateObjectCB(50, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(51, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(52, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        // Table 5
-        mT = XMMatrixTranslation(-5.0f, 0.0f, -1.0f);
-        mR = XMMatrixRotationY(90.0f / 180.0f * 3.14159);
-        UpdateObjectCB(53, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(54, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        UpdateObjectCB(55, mR * mT, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
+        // New round tables layout.
+        // Stare "tables-and-chairs.obj" pod indexem 2 jest ukryte.
+        // Nowe stoliki są ustawione po bokach, żeby środek sali został na parkiet.
+
+// New round tables layout.
+// Parkiet zostaje w centrum, a stoliki są po bokach w bardziej naturalnym układzie.
+// Każdy "table group" to jeden zestaw: stolik + kanapa + szklanki/butelki.
+
+// New round tables layout.
+// Parkiet jest w centrum, a stoliki są po bokach parkietu.
+// Nie dajemy ich pod scenę, tylko bardziej do przodu sali.
+
+// New round tables layout.
+// Ten sam układ, ale cały zestaw przesunięty bardziej w stronę ściany z drzwiami.
+
+        auto updateTableGroup = [&](UINT firstIndex, UINT count, float x, float z, float rotationDegrees)
+            {
+                XMMATRIX tableT = XMMatrixTranslation(x, 0.0f, z);
+                XMMATRIX tableR = XMMatrixRotationY(XMConvertToRadians(rotationDegrees));
+                XMMATRIX tableWorld = tableR * tableT;
+
+                for (UINT j = 0; j < count; ++j)
+                {
+                    UINT objIndex = firstIndex + j;
+
+                    UpdateObjectCB(
+                        objIndex,
+                        tableWorld,
+                        view,
+                        proj,
+                        XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+                        1.0f,
+                        cbSize
+                    );
+                }
+            };
+
+        // LEWA STRONA
+        updateTableGroup(38, 5, -4.0f, -3.4f, -90.0f);
+        updateTableGroup(43, 3, -6.6f, -3.4f, -90.0f);
+
+        // PRAWA STRONA
+        updateTableGroup(46, 4, -4.0f, 3.4f, 90.0f);
+        updateTableGroup(50, 3, -6.6f, 3.4f, 90.0f);
+
+        // TYLNA ŚCIANA / okolice drzwi
+        updateTableGroup(53, 3, -7.9f, -0.8f, 0.0f);
 
         // Dynamic duplicated objects reuse existing mesh/texture data but get their own transform and constant buffer.
         for (UINT i = 56; i < m_objects.GetObjects().size() && i < ObjectCount; ++i)
