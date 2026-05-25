@@ -1088,34 +1088,11 @@ private:
             UpdateObjectCB(13 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
             UpdateObjectCB(22 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         }
-        // Bar
-        //UpdateObjectCB(31, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 1.0f, cbSize);
-        // Door
+//
         UpdateObjectCB(32, XMMatrixTranslation(0.0f, 0.0f, 1.0f), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.5f, cbSize);
-        // Sofa
-        //UpdateObjectCB(33, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
-        // Beer bottles
-        //UpdateObjectCB(34, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
-        //UpdateObjectCB(35, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
-        // Bar sign
-        //UpdateObjectCB(36, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
-        // Disco ball
+//
         UpdateObjectCB(37, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-        // New round tables layout.
-        // Stare "tables-and-chairs.obj" pod indexem 2 jest ukryte.
-        // Nowe stoliki są ustawione po bokach, żeby środek sali został na parkiet.
-
-// New round tables layout.
-// Parkiet zostaje w centrum, a stoliki są po bokach w bardziej naturalnym układzie.
-// Każdy "table group" to jeden zestaw: stolik + kanapa + szklanki/butelki.
-
-// New round tables layout.
-// Parkiet jest w centrum, a stoliki są po bokach parkietu.
-// Nie dajemy ich pod scenę, tylko bardziej do przodu sali.
-
-// New round tables layout.
-// Ten sam układ, ale cały zestaw przesunięty bardziej w stronę ściany z drzwiami.
-
+//
         auto updateTableGroup = [&](UINT firstIndex, UINT count, float x, float z, float rotationDegrees)
             {
                 XMMATRIX tableT = XMMatrixTranslation(x, 0.0f, z);
