@@ -116,7 +116,7 @@ private:
     std::unique_ptr<SoundEffectInstance> m_musicInstance;
     AudioListener m_listener;
     AudioEmitter m_emitter;
-    std::vector<int> musicTempo = { 135, 120 };
+    std::vector<int> musicTempo = { 135, 160 };
     std::vector<int> musicLightEffect = { 5, 3 };
     int m_currentMusicIndex = 0;
 
