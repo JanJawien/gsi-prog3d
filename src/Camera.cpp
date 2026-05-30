@@ -7,18 +7,22 @@ Camera::Camera()
 
 void Camera::Update(float deltaTime, HWND hwnd)
 {
+    // if the game window is not active, camera input is ignored
     if (GetForegroundWindow() != hwnd)
     {
         firstMouse = true;
         return;
     }
 
+    // camera movement directions
     XMVECTOR forward = GetForward();
     XMVECTOR right = GetRight();
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
     XMVECTOR p = XMLoadFloat3(&pos);
 
+    // WASD + up/down camera movement
+    // moveSpeed in Camera.h changes movement speed
     if (GetAsyncKeyState('W') & 0x8000) p = XMVectorAdd(p, XMVectorScale(forward, moveSpeed * deltaTime));
     if (GetAsyncKeyState('S') & 0x8000) p = XMVectorSubtract(p, XMVectorScale(forward, moveSpeed * deltaTime));
     if (GetAsyncKeyState('D') & 0x8000) p = XMVectorAdd(p, XMVectorScale(right, moveSpeed * deltaTime));
@@ -28,11 +32,13 @@ void Camera::Update(float deltaTime, HWND hwnd)
 
     XMStoreFloat3(&pos, p);
 
+    // rotate camera with mouse
     HandleMouseLook(hwnd);
 }
 
 void Camera::HandleMouseLook(HWND hwnd)
 {
+    // keeps cursor in the center of the window and reads mouse movement delta
     RECT rect;
     GetClientRect(hwnd, &rect);
 
@@ -56,6 +62,7 @@ void Camera::HandleMouseLook(HWND hwnd)
     int dx = mousePos.x - screenCenter.x;
     int dy = mousePos.y - screenCenter.y;
 
+    // mouseSensitivity in Camera.h changes rotation sensitivity
     yaw += dx * mouseSensitivity;
     pitch -= dy * mouseSensitivity;
 
@@ -66,11 +73,13 @@ void Camera::HandleMouseLook(HWND hwnd)
 
 void Camera::ResetMouse()
 {
+    // after returning to the window, the first mouse movement is ignored
     firstMouse = true;
 }
 
 void Camera::ClampAngles()
 {
+    // up/down view limit so the camera cannot flip around
     const float limit = XM_PIDIV2 - 0.1f;
 
     if (pitch > limit) pitch = limit;
@@ -79,6 +88,7 @@ void Camera::ClampAngles()
 
 XMMATRIX Camera::GetViewMatrix() const
 {
+    // creates view matrix from camera position and forward direction
     XMVECTOR p = XMLoadFloat3(&pos);
     XMVECTOR forward = GetForward();
     XMVECTOR target = XMVectorAdd(p, forward);
@@ -94,6 +104,7 @@ XMFLOAT3 Camera::GetPosition() const
 
 XMVECTOR Camera::GetForward() const
 {
+    // converts yaw/pitch into forward direction
     float cp = cosf(pitch);
     float sp = sinf(pitch);
     float cy = cosf(yaw);
@@ -104,6 +115,7 @@ XMVECTOR Camera::GetForward() const
 
 XMVECTOR Camera::GetRight() const
 {
+    // right direction calculated using cross product
     XMVECTOR forward = GetForward();
     XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     return XMVector3Normalize(XMVector3Cross(up, forward));

@@ -10,40 +10,56 @@
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
+// one model vertex: position + texture UV
 struct Vertex
 {
     XMFLOAT3 position;
     XMFLOAT2 uv;
 };
 
+// maximum number of lights sent to the shader
+// must match Light lights[16] in Shader.hlsl
 const int MAX_LIGHTS = 16;
 
 struct Light
 {
+    // light position
     XMFLOAT3 position;
+    // light brightness
     float intensity;
 
+    // RGB light color
     XMFLOAT3 color;
+    // light range
     float range;
 
+    // light direction, important for spotlights
     XMFLOAT3 direction;
+    // spotlight cone sharpness
     float spotPower;
 
+    // 0 = general/ambient, 1 = spotlight
     int type;
+    // 0 = disabled, 1 = enabled
     int isEnabled;
     XMFLOAT2 pad;
 };
 
+// data sent to shader separately for every object
 struct alignas(256) ObjectConstants
 {
     XMFLOAT4X4 world;
     XMFLOAT4X4 worldViewProj;
 
+    // camera position, used for lighting and transparency
     XMFLOAT3 cameraPosition;
+    // texture tiling/repetition
     float uvScale;
 
+    // base object color
     XMFLOAT4 baseColor;
 
+    // lights passed to shader
     Light lights[MAX_LIGHTS];
     int lightCount;
     int isLightCone;
@@ -52,17 +68,21 @@ struct alignas(256) ObjectConstants
 
 struct Mesh
 {
+    // model geometry
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
 };
 
 struct ObjectRenderData
 {
+    // model data
     Mesh mesh;
 
+    // GPU buffers for vertices
     ComPtr<ID3D12Resource> vertexBuffer;
     ComPtr<ID3D12Resource> vertexUpload;
 
+    // GPU buffers for indices
     ComPtr<ID3D12Resource> indexBuffer;
     ComPtr<ID3D12Resource> indexUpload;
 
@@ -70,15 +90,17 @@ struct ObjectRenderData
     D3D12_INDEX_BUFFER_VIEW ibv{};
     UINT indexCount = 0;
 
+    // object texture
     ComPtr<ID3D12Resource> texture;
     ComPtr<ID3D12Resource> textureUpload;
 
     D3D12_GPU_DESCRIPTOR_HANDLE srvGpu{};
 
+    // model center, useful for rotations and picking
     XMFLOAT3 meshCenter = { 0.0f, 0.0f, 0.0f };
 
-    //macierz świata obiektu.
-    //ray picking, żeby sprawdzać realną geometrię po transformacji
+    // object world matrix: position/rotation/scale
+    // also used by ray picking to test transformed geometry
     XMFLOAT4X4 worldMatrix =
     {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -87,11 +109,17 @@ struct ObjectRenderData
         0.0f, 0.0f, 0.0f, 1.0f
     };
 
+    // transparent object uses different pipeline
     bool isTransparent = false;
+
+    // true if object is a visible light cone
     bool isLightCone = false;
+
+    // false = object is not drawn and cannot be selected
     bool isVisible = true;
 };
 
+// helper structures for manual DDS loading
 struct DDS_PIXELFORMAT
 {
     uint32_t size;

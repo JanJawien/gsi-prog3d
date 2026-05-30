@@ -28,6 +28,7 @@ using namespace DirectX;
 // Random engine (initialize once, e.g., in constructor or globally)
 std::random_device rd;
 std::mt19937 gen(rd());
+// random speed range, if used by movement/animation
 std::uniform_real_distribution<float> speedDist(1.5f, 5.0f);
 
 
@@ -83,8 +84,12 @@ private:
 
     // App params
     static const UINT FrameCount = 2;
+
+    // application window size
     static const UINT Width = 1280;
     static const UINT Height = 720;
+
+    // maximum number of objects in scene/arrays
     static const UINT ObjectCount = 222;
 
     // Device Context 
@@ -116,34 +121,44 @@ private:
     std::unique_ptr<SoundEffectInstance> m_musicInstance;
     AudioListener m_listener;
     AudioEmitter m_emitter;
+    // music tempo values, later passed to lighting
     std::vector<int> musicTempo = { 135, 160 };
+
+    // light effect assigned to each music track
     std::vector<int> musicLightEffect = { 5, 3 };
     int m_currentMusicIndex = 0;
 
+    // special effects for DJ desk
     bool m_djDeskGlowOn = false;
     bool m_djDeskRotateOn = false;
     float m_djDeskAngle = 0.0f;
     DirectX::XMFLOAT3 m_djDeskCenter = { 0.0f, 0.0f, 0.0f };
 
     // New interaction system
+    // currently selected object index, -1 means nothing selected
     int m_selectedObjectIndex = -1;
 
-    std::array<DirectX::XMFLOAT3, ObjectCount> m_objectMoveOffset{};
-    std::array<float, ObjectCount> m_objectRotationY{};
-    std::array<bool, ObjectCount> m_objectVisible{};
-    std::array<DirectX::XMFLOAT4, ObjectCount> m_objectBaseColor{};
-    std::array<float, ObjectCount> m_objectBaseUvScale{};
-    std::array<float, ObjectCount> m_objectScale{};
+    // object parameter arrays, index matches object index
+    std::array<DirectX::XMFLOAT3, ObjectCount> m_objectMoveOffset{}; // object translation offset
+    std::array<float, ObjectCount> m_objectRotationY{};              // object rotation around Y axis
+    std::array<bool, ObjectCount> m_objectVisible{};                 // object visibility
+    std::array<DirectX::XMFLOAT4, ObjectCount> m_objectBaseColor{};   // object color
+    std::array<float, ObjectCount> m_objectBaseUvScale{};            // texture tiling
+    std::array<float, ObjectCount> m_objectScale{};                  // object scale/size
 
     // Disco floor
+    // disco floor system
     bool m_discoFloorOn = true;
     float m_discoTimer = 0.0f;
+
+    // how often disco floor colors change, in seconds
     float m_discoChangeTime = 0.35f;
 
     UINT m_discoBaseIndex = 0;
     UINT m_discoFirstIndex = 0;
     UINT m_discoTileCount = 0;
 
+    // number of disco floor rows and columns
     static const UINT DiscoRows = 8;
     static const UINT DiscoCols = 9;
 
@@ -249,152 +264,152 @@ private:
         }
 #endif
 
-        UINT dxgiFactoryFlags = 0;
-        ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_factory)));
+    UINT dxgiFactoryFlags = 0;
+    ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&m_factory)));
 
-        ComPtr<IDXGIAdapter1> hardwareAdapter;
-        GetHardwareAdapter(hardwareAdapter.ReleaseAndGetAddressOf());
+    ComPtr<IDXGIAdapter1> hardwareAdapter;
+    GetHardwareAdapter(hardwareAdapter.ReleaseAndGetAddressOf());
 
-        ThrowIfFailed(D3D12CreateDevice(hardwareAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device)));
+    ThrowIfFailed(D3D12CreateDevice(hardwareAdapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_device)));
 
-        D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-        queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-        ThrowIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
+    D3D12_COMMAND_QUEUE_DESC queueDesc = {};
+    queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    ThrowIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)));
 
-        DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-        swapChainDesc.BufferCount = FrameCount;
-        swapChainDesc.Width = Width;
-        swapChainDesc.Height = Height;
-        swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-        swapChainDesc.SampleDesc.Count = 1;
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+    swapChainDesc.BufferCount = FrameCount;
+    swapChainDesc.Width = Width;
+    swapChainDesc.Height = Height;
+    swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.SampleDesc.Count = 1;
 
-        ComPtr<IDXGISwapChain1> swapChain;
-        ThrowIfFailed(m_factory->CreateSwapChainForHwnd(
-            m_commandQueue.Get(),
-            m_hwnd,
-            &swapChainDesc,
-            nullptr,
-            nullptr,
-            &swapChain));
+    ComPtr<IDXGISwapChain1> swapChain;
+    ThrowIfFailed(m_factory->CreateSwapChainForHwnd(
+        m_commandQueue.Get(),
+        m_hwnd,
+        &swapChainDesc,
+        nullptr,
+        nullptr,
+        &swapChain));
 
-        ThrowIfFailed(m_factory->MakeWindowAssociation(m_hwnd, DXGI_MWA_NO_ALT_ENTER));
-        ThrowIfFailed(swapChain.As(&m_swapChain));
-        m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+    ThrowIfFailed(m_factory->MakeWindowAssociation(m_hwnd, DXGI_MWA_NO_ALT_ENTER));
+    ThrowIfFailed(swapChain.As(&m_swapChain));
+    m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
-        D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-        rtvHeapDesc.NumDescriptors = FrameCount;
-        rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-        ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
-        m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+    rtvHeapDesc.NumDescriptors = FrameCount;
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
+    m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-        D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
-        dsvHeapDesc.NumDescriptors = 1;
-        dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
-        
-        D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-        srvHeapDesc.NumDescriptors = ObjectCount;
-        srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
-        m_srvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
 
-        D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-        cbvHeapDesc.NumDescriptors = ObjectCount;
-        cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-        cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-        ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
+    srvHeapDesc.NumDescriptors = ObjectCount;
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
+    m_srvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-        for (UINT i = 0; i < FrameCount; i++)
-        {
-            ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
+    D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
+    cbvHeapDesc.NumDescriptors = ObjectCount;
+    cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
 
-            D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
-            rtvHandle.ptr += static_cast<SIZE_T>(i) * m_rtvDescriptorSize;
-            m_device->CreateRenderTargetView(m_renderTargets[i].Get(), nullptr, rtvHandle);
+    for (UINT i = 0; i < FrameCount; i++)
+    {
+        ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_renderTargets[i])));
 
-            ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[i])));
-        }
+        D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = m_rtvHeap->GetCPUDescriptorHandleForHeapStart();
+        rtvHandle.ptr += static_cast<SIZE_T>(i) * m_rtvDescriptorSize;
+        m_device->CreateRenderTargetView(m_renderTargets[i].Get(), nullptr, rtvHandle);
 
-        D3D12_RESOURCE_DESC depthDesc = {};
-        depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        depthDesc.Width = Width;
-        depthDesc.Height = Height;
-        depthDesc.DepthOrArraySize = 1;
-        depthDesc.MipLevels = 1;
-        depthDesc.Format = DXGI_FORMAT_D32_FLOAT;
-        depthDesc.SampleDesc.Count = 1;
-        depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-
-        D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
-        depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
-        depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
-        depthOptimizedClearValue.DepthStencil.Stencil = 0;
-
-        D3D12_HEAP_PROPERTIES heapProps = {};
-        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-        ThrowIfFailed(m_device->CreateCommittedResource(
-            &heapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &depthDesc,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            &depthOptimizedClearValue,
-            IID_PPV_ARGS(&m_depthBuffer)
-        ));
-
-        D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-        dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
-        dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-
-        m_device->CreateDepthStencilView(
-            m_depthBuffer.Get(),
-            &dsvDesc,
-            m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
-        );
-
-        m_viewport = { 0.0f, 0.0f, static_cast<float>(Width), static_cast<float>(Height), 0.0f, 1.0f };
-        m_scissorRect = { 0, 0, static_cast<LONG>(Width), static_cast<LONG>(Height) };
-
-        ThrowIfFailed(m_device->CreateCommandList(
-            0,
-            D3D12_COMMAND_LIST_TYPE_DIRECT,
-            m_commandAllocators[m_frameIndex].Get(),
-            nullptr,
-            IID_PPV_ARGS(&m_commandList)));
-        ThrowIfFailed(m_commandList->Close());
-
-        ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
-        m_fenceValues[m_frameIndex] = 1;
-        m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-
-        dsvHeapDesc.NumDescriptors = 1;
-        dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-        dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
-
-        D3D12_CLEAR_VALUE depthClearValue = {};
-        depthClearValue.Format = DXGI_FORMAT_D32_FLOAT;
-        depthClearValue.DepthStencil.Depth = 1.0f;
-
-        D3D12_HEAP_PROPERTIES depthHeapProps = {};
-        depthHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-
-        ThrowIfFailed(m_device->CreateCommittedResource(
-            &depthHeapProps,
-            D3D12_HEAP_FLAG_NONE,
-            &depthDesc,
-            D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            &depthClearValue,
-            IID_PPV_ARGS(&m_depthStencil)));
-
-        m_device->CreateDepthStencilView(m_depthStencil.Get(), nullptr, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+        ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocators[i])));
     }
-    
+
+    D3D12_RESOURCE_DESC depthDesc = {};
+    depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    depthDesc.Width = Width;
+    depthDesc.Height = Height;
+    depthDesc.DepthOrArraySize = 1;
+    depthDesc.MipLevels = 1;
+    depthDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    depthDesc.SampleDesc.Count = 1;
+    depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
+    depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+    depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
+    depthOptimizedClearValue.DepthStencil.Stencil = 0;
+
+    D3D12_HEAP_PROPERTIES heapProps = {};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    ThrowIfFailed(m_device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &depthDesc,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        &depthOptimizedClearValue,
+        IID_PPV_ARGS(&m_depthBuffer)
+    ));
+
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+
+    m_device->CreateDepthStencilView(
+        m_depthBuffer.Get(),
+        &dsvDesc,
+        m_dsvHeap->GetCPUDescriptorHandleForHeapStart()
+    );
+
+    m_viewport = { 0.0f, 0.0f, static_cast<float>(Width), static_cast<float>(Height), 0.0f, 1.0f };
+    m_scissorRect = { 0, 0, static_cast<LONG>(Width), static_cast<LONG>(Height) };
+
+    ThrowIfFailed(m_device->CreateCommandList(
+        0,
+        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        m_commandAllocators[m_frameIndex].Get(),
+        nullptr,
+        IID_PPV_ARGS(&m_commandList)));
+    ThrowIfFailed(m_commandList->Close());
+
+    ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+    m_fenceValues[m_frameIndex] = 1;
+    m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+
+    dsvHeapDesc.NumDescriptors = 1;
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_dsvHeap)));
+
+    D3D12_CLEAR_VALUE depthClearValue = {};
+    depthClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+    depthClearValue.DepthStencil.Depth = 1.0f;
+
+    D3D12_HEAP_PROPERTIES depthHeapProps = {};
+    depthHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    ThrowIfFailed(m_device->CreateCommittedResource(
+        &depthHeapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &depthDesc,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        &depthClearValue,
+        IID_PPV_ARGS(&m_depthStencil)));
+
+    m_device->CreateDepthStencilView(m_depthStencil.Get(), nullptr, m_dsvHeap->GetCPUDescriptorHandleForHeapStart());
+    }
+
     void LoadAssets()
     {
         D3D12_DESCRIPTOR_RANGE range = {};
@@ -452,7 +467,7 @@ private:
         psoDesc.VS = { vertexShader->GetBufferPointer(), vertexShader->GetBufferSize() };
         psoDesc.PS = { pixelShader->GetBufferPointer(), pixelShader->GetBufferSize() };
         psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; 
+        psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
         psoDesc.RasterizerState.FrontCounterClockwise = FALSE;
         psoDesc.RasterizerState.DepthClipEnable = TRUE;
         psoDesc.SampleMask = UINT_MAX;
@@ -537,6 +552,7 @@ private:
     // Model loading functions
     XMFLOAT4 RandomDiscoColor()
     {
+        // random disco color range, higher values = brighter colors
         std::uniform_real_distribution<float> colorDist(0.45f, 2.2f);
 
         return XMFLOAT4(
@@ -549,6 +565,7 @@ private:
 
     Mesh CreateQuadMesh(float centerX, float centerY, float centerZ, float sizeX, float sizeZ)
     {
+        // creates a rectangle/tile from two triangles
         Mesh mesh;
 
         float hx = sizeX * 0.5f;
@@ -709,6 +726,7 @@ private:
 
     void AddDiscoTile(float x, float y, float z, float size)
     {
+        // adds one disco floor tile
         UINT index = static_cast<UINT>(m_objects.GetObjects().size());
 
         if (index >= ObjectCount)
@@ -741,16 +759,17 @@ private:
 
     void CreateDiscoFloor()
     {
+        // creates full disco floor
         m_discoFirstIndex = 0;
         m_discoTileCount = 0;
 
-        float tileSize = 0.62f;
-        float gap = 0.07f;
+        float tileSize = 0.62f; // single tile size
+        float gap = 0.07f;      // gap between tiles
         float step = tileSize + gap;
 
         // Parkiet lekko mniejszy i bardziej na środku sali.
         // X idzie od sceny w stronę kamery, Z to szerokość sali.
-        float startX = 0.35f;
+        float startX = 0.35f; // disco floor offset on X axis
 
         float totalX = DiscoRows * tileSize + (DiscoRows - 1) * gap;
         float totalZ = DiscoCols * tileSize + (DiscoCols - 1) * gap;
@@ -789,11 +808,13 @@ private:
 
     void UpdateDiscoFloor(float deltaTime)
     {
+        // updates disco floor colors over time
         if (!m_discoFloorOn)
             return;
 
         m_discoTimer += deltaTime;
 
+        // m_discoChangeTime controls how often the floor blinks
         if (m_discoTimer < m_discoChangeTime)
             return;
 
@@ -805,9 +826,10 @@ private:
                 m_discoColors[i] = RandomDiscoColor();
         }
     }
-    
+
     void LoadModels()
     {
+        // loads models/textures and sets starting object parameters
         m_objects.SetMeshBufferFunc([this](ObjectRenderData& obj)
             {
                 CreateMeshBuffers(obj);
@@ -954,7 +976,7 @@ private:
         texDesc.Height = header.height;
         texDesc.DepthOrArraySize = 1;
         texDesc.MipLevels = 1;
-        texDesc.Format = textureFormat; 
+        texDesc.Format = textureFormat;
         texDesc.SampleDesc.Count = 1;
         texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
@@ -1024,7 +1046,7 @@ private:
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Format = textureFormat; 
+        srvDesc.Format = textureFormat;
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
 
@@ -1041,10 +1063,12 @@ private:
 
     void Update(float deltaTime, float totalTime)
     {
+        // main scene update, runs every frame
         // Move camera
         m_camera.Update(deltaTime, m_hwnd);
         XMMATRIX view = m_camera.GetViewMatrix();
 
+        // updates moving lights and disco floor blinking
         m_lighting.UpdateSpotlights(totalTime);
         UpdateDiscoFloor(deltaTime);
 
@@ -1059,15 +1083,15 @@ private:
         m_listener.SetPosition(m_camera.GetPosition());
         m_musicInstance->Apply3D(m_listener, m_emitter);
 
-        const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u; 
-        
+        const UINT cbSize = (sizeof(ObjectConstants) + 255) & ~255u;
+
         // Room
         UpdateObjectCB(0, XMMatrixIdentity(), view, proj, XMFLOAT4(0.60f, 0.60f, 0.60f, 1.0f), 6.0f, cbSize);
-		// Scene base
+        // Scene base
         UpdateObjectCB(1, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 7.0f, cbSize);
         // Tables and chairs
         UpdateObjectCB(2, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.2f, cbSize);
-		// Stairs
+        // Stairs
         UpdateObjectCB(3, XMMatrixIdentity(), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.1f, cbSize);
         // DJ setup
         UpdateObjectCB(4, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 0.1f, cbSize);
@@ -1088,11 +1112,11 @@ private:
             UpdateObjectCB(13 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
             UpdateObjectCB(22 + i, coneWorld, view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
         }
-//
+        //
         UpdateObjectCB(32, XMMatrixTranslation(0.0f, 0.0f, 1.0f), view, proj, XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f), 0.5f, cbSize);
-//
+        //
         UpdateObjectCB(37, XMMatrixIdentity(), view, proj, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), 1.0f, cbSize);
-//
+        //
         auto updateTableGroup = [&](UINT firstIndex, UINT count, float x, float z, float rotationDegrees)
             {
                 XMMATRIX tableT = XMMatrixTranslation(x, 0.0f, z);
@@ -1165,6 +1189,7 @@ private:
 
     void Render()
     {
+        // draws the whole scene
         ThrowIfFailed(m_commandAllocators[m_frameIndex]->Reset());
         ThrowIfFailed(m_commandList->Reset(m_commandAllocators[m_frameIndex].Get(), nullptr));
 
@@ -1284,8 +1309,8 @@ private:
 
     void HandleKeyboardInput(WPARAM wParam)
     {
-        const float moveStep = 0.25f;
-        const float rotateStep = XMConvertToRadians(15.0f);
+        const float moveStep = 0.25f; // selected object movement step
+        const float rotateStep = XMConvertToRadians(15.0f); // selected object rotation step
 
         auto hasSelectedObject = [this]() -> bool
             {
@@ -1341,27 +1366,27 @@ private:
             };
 
         auto changeMusic = [this](int index) {
-                if (index < 0) return;
-                if (index >= musicTempo.size()) return;
-                m_currentMusicIndex = index;
-                auto name = L"Assets/music" + std::to_wstring(index) + L".wav";
+            if (index < 0) return;
+            if (index >= musicTempo.size()) return;
+            m_currentMusicIndex = index;
+            auto name = L"Assets/music" + std::to_wstring(index) + L".wav";
 
-                m_musicInstance->Stop();
-                m_audioEngine->Update();
-                m_musicInstance.reset();
-                m_music.reset();
+            m_musicInstance->Stop();
+            m_audioEngine->Update();
+            m_musicInstance.reset();
+            m_music.reset();
 
-                m_music = std::make_unique<SoundEffect>(
-                    m_audioEngine.get(),
-                    name.c_str()
-                );
-                m_musicInstance = m_music->CreateInstance(
-                    SoundEffectInstance_Use3D
-                );
-                m_musicInstance->Play();
+            m_music = std::make_unique<SoundEffect>(
+                m_audioEngine.get(),
+                name.c_str()
+            );
+            m_musicInstance = m_music->CreateInstance(
+                SoundEffectInstance_Use3D
+            );
+            m_musicInstance->Play();
 
-                m_lighting.SetTempo(musicTempo[index]);
-                m_lighting.ChangeLightEffect(musicLightEffect[index]);
+            m_lighting.SetTempo(musicTempo[index]);
+            m_lighting.ChangeLightEffect(musicLightEffect[index]);
             };
 
         switch (wParam)
@@ -1401,12 +1426,13 @@ private:
             m_audioEngine->Suspend();
             m_audioEngine.reset();
             CoUninitialize();
-            
+
             PostQuitMessage(0);
             break;
 
-        // Select / deselect object
+            // Select / deselect object
         case 'E':
+            // select object the camera is looking at
         {
             int clickedObject = m_objects.GetClickedObjectIndex(
                 m_camera.GetPosition(),
@@ -1446,43 +1472,51 @@ private:
 
             // Move selected object
         case 'I':
+            // move selected object forward
             if (hasSelectedObject())
                 m_objectMoveOffset[m_selectedObjectIndex].z += moveStep;
             break;
 
         case 'K':
+            // move selected object backward
             if (hasSelectedObject())
                 m_objectMoveOffset[m_selectedObjectIndex].z -= moveStep;
             break;
 
         case 'J':
+            // move selected object left
             if (hasSelectedObject())
                 m_objectMoveOffset[m_selectedObjectIndex].x -= moveStep;
             break;
 
         case 'L':
+            // move selected object right
             if (hasSelectedObject())
                 m_objectMoveOffset[m_selectedObjectIndex].x += moveStep;
             break;
 
         case 'U':
+            // move selected object up
             if (hasSelectedObject())
                 m_objectMoveOffset[m_selectedObjectIndex].y += moveStep;
             break;
 
         case 'O':
+            // move selected object down
             if (hasSelectedObject())
                 m_objectMoveOffset[m_selectedObjectIndex].y -= moveStep;
             break;
 
             // Rotate selected object
         case 'R':
+            // rotate selected object
             if (hasSelectedObject())
                 m_objectRotationY[m_selectedObjectIndex] += rotateStep;
             break;
 
             // Duplicate selected object
         case 'M':
+            // duplicate selected object
             if (hasSelectedObject())
                 duplicateSelectedObject();
             break;
@@ -1507,18 +1541,22 @@ private:
             break;
 
         case '1':
+            // light effect number 1
             m_lighting.ChangeLightEffect(1);
             break;
 
         case '2':
+            // light effect number 2
             m_lighting.ChangeLightEffect(2);
             break;
 
         case '3':
+            // toggle disco floor
             m_discoFloorOn = !m_discoFloorOn;
             break;
 
         case '0':
+            // return to base light effect
             m_lighting.ChangeLightEffect(0);
             break;
         }
@@ -1646,8 +1684,8 @@ private:
 };
 
 
-    // ----------------------------------------------------------------------------------
-    // Entry Point
+// ----------------------------------------------------------------------------------
+// Entry Point
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPWSTR, _In_ int nCmdShow)
 {

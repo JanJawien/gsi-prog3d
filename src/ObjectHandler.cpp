@@ -17,6 +17,7 @@ Mesh ObjectHandler::LoadGeometry(
     float offsetY,
     float offsetZ)
 {
+    // loads geometry from .obj file, offsetX/Y/Z moves the model during loading
     Mesh mesh;
 
     std::ifstream file(filename);
@@ -134,6 +135,9 @@ void ObjectHandler::LoadObject(
     bool isTransparent,
     bool isLightCone)
 {
+    // helper function for adding one model to the scene
+    // index = object number used later in main.cpp / Dx12App
+    // isTransparent = transparency, isLightCone = visible light cone
     if (objects.size() <= index)
         objects.resize(index + 1);
 
@@ -156,6 +160,7 @@ void ObjectHandler::LoadObject(
 
 void ObjectHandler::CalculateMeshCenter(ObjectRenderData& obj)
 {
+    // calculates model center, used for rotations and object picking
     if (obj.mesh.vertices.empty())
     {
         obj.meshCenter = XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -196,6 +201,7 @@ bool ObjectHandler::RayIntersectsTriangle(
     XMVECTOR v2,
     float& outDistance)
 {
+    // checks ray-triangle hit, used for selecting objects with camera
     const float EPSILON = 0.000001f;
 
     XMVECTOR edge1 = XMVectorSubtract(v1, v0);
@@ -241,6 +247,9 @@ ObjectHandler::ObjectHandler()
 
 void ObjectHandler::LoadAllObjects()
 {
+    // main list of all models in the scene
+    // third argument of LoadObject(...) is the object index
+    // last true/false arguments set transparency and light cone flag
     LoadObject("Assets/room.obj", L"Assets/bricks.dds", 0);
     LoadObject("Assets/scene-base.obj", L"Assets/wood.dds", 1);
     LoadObject("Assets/tables-and-chairs.obj", L"Assets/wood.dds", 2);
@@ -257,6 +266,7 @@ void ObjectHandler::LoadAllObjects()
     LoadObject("Assets/lights-railing-bottom.obj", L"Assets/railing.dds", 11, true);
     LoadObject("Assets/lights-railing-front.obj", L"Assets/railing.dds", 12, true);
 
+    // visible light cones, indices 13-21
     LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 13, true, true);
     LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 14, true, true);
     LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 15, true, true);
@@ -267,6 +277,7 @@ void ObjectHandler::LoadAllObjects()
     LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 20, true, true);
     LoadObject("Assets/light-cone-2.obj", L"Assets/transp.dds", 21, true, true);
 
+    // spotlight lamp models, indices 22-30
     LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 22);
     LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 23);
     LoadObject("Assets/spotlight-lamp-2.obj", L"Assets/lamp.dds", 24);
@@ -285,6 +296,7 @@ void ObjectHandler::LoadAllObjects()
     LoadObject("Assets/bar-sign.obj", L"Assets/energy.dds", 36);
     LoadObject("Assets/disco-ball.obj", L"Assets/disco-ball.dds", 37);
 
+    // separate tables/couches/glasses, indices from 38
     // Table 1
     LoadObject("Assets/table-round.obj", L"Assets/table-round.dds", 38);
     LoadObject("Assets/couch-round.obj", L"Assets/couch-round.dds", 39);
@@ -314,6 +326,7 @@ int ObjectHandler::GetClickedObjectIndex(
     XMFLOAT3 cameraPos,
     XMVECTOR cameraForward)
 {
+    // ray picking, selects object the camera is looking at
     XMVECTOR rayOrigin = XMLoadFloat3(&cameraPos);
     XMVECTOR rayDir = XMVector3Normalize(cameraForward);
 
@@ -324,12 +337,14 @@ int ObjectHandler::GetClickedObjectIndex(
     {
         ObjectRenderData& obj = objects[objIndex];
 
+        // invisible objects cannot be selected
         if (!obj.isVisible)
             continue;
 
         if (obj.mesh.vertices.empty() || obj.mesh.indices.empty())
             continue;
 
+        // light cones are skipped as normal selectable objects
         if (obj.isLightCone)
             continue;
 

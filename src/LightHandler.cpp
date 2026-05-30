@@ -6,12 +6,14 @@ using namespace DirectX;
 // ----- private -----
 // ----- utils -----
 
-void LightHandler::SceneLightDistribute(int targetCount){
-    constexpr float x = 6.0f;
-    constexpr float y = 4.5f;
-    const float zMin = -3.0f;
-    const float zMax = 3.0f;
+void LightHandler::SceneLightDistribute(int targetCount) {
+    // distributes scene spotlights
+    constexpr float x = 6.0f;      // light position on X axis
+    constexpr float y = 4.5f;      // light height
+    const float zMin = -3.0f;      // start of Z distribution
+    const float zMax = 3.0f;       // end of Z distribution
 
+    // limits number of lights to MIN_LIGHTS_SCENE / MAX_LIGHTS_SCENE
     targetCount = std::clamp(targetCount, MIN_LIGHTS_SCENE, MAX_LIGHTS_SCENE);
     lightsScene.resize(targetCount);
 
@@ -23,15 +25,16 @@ void LightHandler::SceneLightDistribute(int targetCount){
         float z = zMin + t * (zMax - zMin);
 
         lightsScene[i] = {
-             { x, y, z }, 4.0f,
-             sceneLightBaseColor, 20.0f,
-             { 0.0f, -1.0f, 0.0f }, GetSpotPower(),
-             1, 1, {}
+             { x, y, z }, 4.0f,                 // light position and intensity
+             sceneLightBaseColor, 20.0f,        // light color and range
+             { 0.0f, -1.0f, 0.0f }, GetSpotPower(), // direction and cone sharpness
+             1, 1, {}                           // type=1 spotlight, isEnabled=1 enabled
         };
     }
 }
 
 void LightHandler::InitLights() {
+    // initial lights created when the program starts
     // Ambient light
     lightsOther.push_back({
         { -3.0f, 4.5f, 0.0f }, 3.0f,
@@ -78,7 +81,8 @@ XMFLOAT3 FloatToHue(float t) {
 
 // ----- getters -----
 
-float LightHandler::GetSpotPower() { return isSceneLightBlurOn ? 20.0f : 500.0f;  }
+// lower value = softer cone, higher value = sharper spotlight
+float LightHandler::GetSpotPower() { return isSceneLightBlurOn ? 20.0f : 500.0f; }
 
 
 
@@ -94,7 +98,7 @@ LightHandler::LightHandler()
 
 // ===== getters =====
 
-int LightHandler::GetLightCount() { return min(lightsScene.size()+lightsOther.size(), MAX_LIGHTS); }
+int LightHandler::GetLightCount() { return min(lightsScene.size() + lightsOther.size(), MAX_LIGHTS); }
 
 XMMATRIX LightHandler::GetSpotlightPos(int idx)
 {
@@ -138,6 +142,7 @@ XMMATRIX LightHandler::GetSpotlightRot(int idx)
 }
 
 void LightHandler::UpdateLights(Light outLights[MAX_LIGHTS], int& outCount) {
+    // copies lights to the array sent to shader
     size_t i = 0;
 
     for (const auto& l : lightsScene) {
@@ -156,37 +161,43 @@ void LightHandler::UpdateLights(Light outLights[MAX_LIGHTS], int& outCount) {
 // ===== effects =====
 
 void LightHandler::ToggleAmbientLight() {
+    // enable/disable general ambient light
     lightsOther[0].isEnabled = !lightsOther[0].isEnabled;
 }
 
 void LightHandler::ToggleSceneLights() {
+    // enable/disable all scene spotlights
     for (auto& l : lightsScene) { l.isEnabled = !l.isEnabled; }
 }
 
 void LightHandler::ToggleSceneLightBlur() {
+    // changes spotlight blur/sharpness
     isSceneLightBlurOn = !isSceneLightBlurOn;
     for (auto& l : lightsScene) { l.spotPower = GetSpotPower(); }
 }
 
 void LightHandler::AddSceneLight() {
+    // adds scene light, still limited by MAX_LIGHTS_SCENE
     SceneLightDistribute(lightsScene.size() + 1);
     ChangeLightEffect(lightEffectIdx);
 }
 
 void LightHandler::RemoveSceneLight() {
+    // removes scene light, still limited by MIN_LIGHTS_SCENE
     SceneLightDistribute(lightsScene.size() - 1);
     ChangeLightEffect(lightEffectIdx);
 }
 
 
-void LightHandler::ChangeLightEffectNext(){
+void LightHandler::ChangeLightEffectNext() {
     ChangeLightEffect(lightEffectIdx + 1);
 }
-void LightHandler::ChangeLightEffectPrev(){
+void LightHandler::ChangeLightEffectPrev() {
     ChangeLightEffect(lightEffectIdx - 1);
 }
 
 void LightHandler::ChangeLightEffect(int effectIndex) {
+    // all light effects are here, case 0/1/2/... are effect modes
     switch (effectIndex) {
     case 0: // White, static
         for (auto& l : lightsScene) {
@@ -206,7 +217,7 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
             l.direction = { 0.0f, -1.0f, l.position.z / 3 };
             l.isEnabled = true;
         }
-        lightEffectPeriod = 16;
+        lightEffectPeriod = 16; // effect cycle length, higher value = slower
         angVFunc = [](float z, float t, int i) { return 60.0f * (-cos((t + abs(z / 10)) * XM_2PI) / 2 + 0.5f); };
         angHFunc = [](float z, float t, int i) { return 45.0f * z / 3;};
         colorFunc = [](float z, float t, int i) { return FloatToHue(t); };
@@ -218,24 +229,24 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
             l.direction = { -1.0f, -1.0f, l.position.z / 24 };
             l.isEnabled = true;
         }
-        lightEffectPeriod = 2;
+        lightEffectPeriod = 2; // short cycle = fast blinking
         angVFunc = NULL;
         angHFunc = NULL;
         colorFunc = [](float z, float t, int i) {
-            if((t>0.5) ^ (i%2==0)) return XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+            if ((t > 0.5) ^ (i % 2 == 0)) return XMFLOAT3{ 1.0f, 1.0f, 1.0f };
             else return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
             };
         break;
 
     case 3: // Different colors spinning in 8 shape
         for (auto& l : lightsScene) {
-            l.color = FloatToHue(l.position.z/6 + 0.5f);
+            l.color = FloatToHue(l.position.z / 6 + 0.5f);
             l.direction = { -1.0f, -1.0f, 0.0f };
             l.isEnabled = true;
         }
         lightEffectPeriod = 16;
-        angVFunc = [](float z, float t, int i) { return 30.0f + 15.0f * cos(2*t * XM_2PI + z*8); };
-        angHFunc = [](float z, float t, int i) { return 15.0f * sin(t * XM_2PI + z*8); };
+        angVFunc = [](float z, float t, int i) { return 30.0f + 15.0f * cos(2 * t * XM_2PI + z * 8); };
+        angHFunc = [](float z, float t, int i) { return 15.0f * sin(t * XM_2PI + z * 8); };
         colorFunc = NULL;
         break;
 
@@ -245,8 +256,8 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
             l.direction = { -1.0f, -1.0f, 0.0f };
             l.isEnabled = true;
         }
-        lightEffectPeriod = 8;
-        angVFunc = [](float z, float t, int i) { return 75.0f * (t>1.0/6 && t<5.0/6 ? 1 : sin(t*3*3.14159)); };
+        lightEffectPeriod = 8; // effect cycle length
+        angVFunc = [](float z, float t, int i) { return 75.0f * (t > 1.0 / 6 && t < 5.0 / 6 ? 1 : sin(t * 3 * 3.14159)); };
         angHFunc = [](float z, float t, int i) { return 0.0f; };
         colorFunc = NULL;
         break;
@@ -259,9 +270,9 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
         }
         lightEffectPeriod = 8;
         angVFunc = [](float z, float t, int i) { return 15.0f; };
-        angHFunc = [](float z, float t, int i) { return (10.0f - 60.0f * sin(1.57f+ 8*floor(t*4))) * z/3; };
+        angHFunc = [](float z, float t, int i) { return (10.0f - 60.0f * sin(1.57f + 8 * floor(t * 4))) * z / 3; };
         colorFunc = [](float z, float t, int i) {
-            if (((int)(t*8))%2 == 1) return FloatToHue(0.25f*floor(t*4));
+            if (((int)(t * 8)) % 2 == 1) return FloatToHue(0.25f * floor(t * 4));
             else return XMFLOAT3{ 0.0f, 0.0f, 0.0f };
             };
         break;
@@ -275,19 +286,22 @@ void LightHandler::ChangeLightEffect(int effectIndex) {
 }
 
 void LightHandler::UpdateSpotlights(float totalTime) {
+    // spotlight animation over time
+    // lightEffectBPM and lightEffectPeriod control effect speed
     if (lightEffectBPM <= 0 || lightEffectPeriod <= 0)
         return;
 
-    if (lightEffectStartTime == -1.0) 
+    if (lightEffectStartTime == -1.0)
         lightEffectStartTime = totalTime;
 
     float effectTime = totalTime - lightEffectStartTime;
+    // BPM is converted here into animation time from 0 to 1
     double fTime = fmod(effectTime / (60.0 / lightEffectBPM * lightEffectPeriod), 1);
 
     int lightIdx = 0;
     for (auto& l : lightsScene)
     {
-        if (colorFunc != NULL) 
+        if (colorFunc != NULL)
             l.color = colorFunc(l.position.z, fTime, lightIdx);
         if (angVFunc != NULL && angHFunc != NULL) {
             XMFLOAT3 tiltedDir;
